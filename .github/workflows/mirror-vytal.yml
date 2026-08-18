@@ -1,6 +1,7 @@
 name: Mirror Vytal landing branch
 
 on:
+  workflow_dispatch:
   push:
     paths:
       - '.github/workflows/mirror-vytal.yml'
