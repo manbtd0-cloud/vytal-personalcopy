@@ -1,0 +1,50 @@
+name: Mirror Vytal landing branch
+
+on:
+  push:
+    paths:
+      - '.github/workflows/mirror-vytal.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout personal copy
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Checkout source landing branch
+        uses: actions/checkout@v4
+        with:
+          repository: Ahmad-Ali-Shah/Vital
+          ref: landing-page-design
+          path: _mirror_source
+
+      - name: Replace working tree with source snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          find . -mindepth 1 -maxdepth 1 ! -name '.git' ! -name '_mirror_source' -exec rm -rf {} +
+          cp -a _mirror_source/. .
+          rm -rf _mirror_source
+          rm -f .github/workflows/mirror-vytal.yml
+          rmdir .github/workflows 2>/dev/null || true
+          rmdir .github 2>/dev/null || true
+
+      - name: Commit mirrored snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          if git diff --cached --quiet; then
+            echo 'No mirror changes detected.'
+            exit 0
+          fi
+          git commit -m 'chore: mirror Vytal landing-page-design snapshot'
+          git push origin HEAD:main
