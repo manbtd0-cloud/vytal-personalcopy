@@ -1,7 +1,9 @@
+import HeroSection from '../components/home/HeroSection.jsx'
+
 export default function LandingPage() {
   return (
-    <section>
-      <h1>There’s more here than you can see.</h1>
-    </section>
+    <div className="landing-page">
+      <HeroSection />
+    </div>
   )
 }
