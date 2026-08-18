@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import LandingPage from '../../src/public/pages/LandingPage.jsx'
 
@@ -20,7 +20,9 @@ test('home closes with clearly labelled future direction and product entry', () 
   expect(
     screen.getByRole('heading', { name: /see what your camera can tell you/i }),
   ).toBeInTheDocument()
-  expect(screen.getByRole('link', { name: /start screening/i })).toHaveAttribute('href', '/scan')
-  expect(screen.getByRole('link', { name: /explore screenings/i })).toHaveAttribute('href', '/screenings')
-  expect(screen.getByText(/does not provide a medical diagnosis/i)).toBeInTheDocument()
+
+  const finalCta = screen.getByRole('region', { name: /final call to action/i })
+  expect(within(finalCta).getByRole('link', { name: /start screening/i })).toHaveAttribute('href', '/scan')
+  expect(within(finalCta).getByRole('link', { name: /explore screenings/i })).toHaveAttribute('href', '/screenings')
+  expect(within(finalCta).getByText(/does not provide a medical diagnosis/i)).toBeInTheDocument()
 })
