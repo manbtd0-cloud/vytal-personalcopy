@@ -4,7 +4,7 @@ import PulseMark from './PulseMark.jsx'
 import AiConfigModal from './AiConfigModal.jsx'
 
 const links = [
-  { to: '/', label: 'Scan', end: true },
+  { to: '/scan', label: 'Scan' },
   { to: '/dashboard', label: 'Dashboard' },
   { to: '/report', label: 'Report' },
 ]
@@ -44,7 +44,6 @@ export default function NavBar({ onReplayIntro }) {
             <NavLink
               key={link.to}
               to={link.to}
-              end={link.end}
               className={({ isActive }) => 'navlink' + (isActive ? ' active' : '')}
             >
               {link.label}
