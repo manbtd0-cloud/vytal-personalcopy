@@ -1,0 +1,115 @@
+.rb-magnet {
+  position: relative;
+  display: inline-flex;
+}
+
+.rb-magnet__inner {
+  display: inline-flex;
+  will-change: transform;
+}
+
+.rb-spotlight-card {
+  --rb-spot-x: 50%;
+  --rb-spot-y: 50%;
+  --rb-spot-color: rgba(255, 77, 94, 0.16);
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--public-border);
+  border-radius: 24px;
+  background:
+    radial-gradient(440px circle at var(--rb-spot-x) var(--rb-spot-y), var(--rb-spot-color), transparent 58%),
+    var(--public-surface);
+}
+
+.rb-split-text {
+  display: inline;
+}
+
+.rb-split-text__piece,
+.rb-scroll-reveal__word {
+  display: inline-block;
+}
+
+.rb-scroll-reveal {
+  margin: 0;
+}
+
+.rb-card-swap {
+  position: relative;
+  width: min(100%, var(--rb-card-swap-width));
+  height: var(--rb-card-swap-height);
+  perspective: 900px;
+  transform-style: preserve-3d;
+}
+
+.rb-swap-card {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  overflow: hidden;
+  border: 1px solid var(--public-border);
+  border-radius: 28px;
+  background: var(--public-surface-raised);
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.25);
+}
+
+.rb-pixel-transition {
+  position: relative;
+  min-height: 320px;
+  overflow: hidden;
+  border: 1px solid var(--public-border);
+  border-radius: 28px;
+  background: var(--public-surface);
+}
+
+.rb-pixel-transition__layer {
+  position: absolute;
+  inset: 0;
+  transition: none;
+}
+
+.rb-pixel-transition__layer--first {
+  opacity: 1;
+}
+
+.rb-pixel-transition__layer--second {
+  opacity: 0;
+}
+
+.rb-pixel-transition__pixels {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  grid-template-rows: repeat(7, 1fr);
+  pointer-events: none;
+}
+
+.rb-pixel-transition__pixel {
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce), (pointer: coarse) {
+  .rb-magnet__inner {
+    transform: none !important;
+    transition: none !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rb-card-swap {
+    height: auto;
+    display: grid;
+    gap: 16px;
+    perspective: none;
+  }
+
+  .rb-swap-card {
+    position: relative;
+    inset: auto;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 220px;
+    transform: none !important;
+  }
+}

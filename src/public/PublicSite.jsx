@@ -7,6 +7,7 @@ import './styles/public-layout.css'
 import './styles/landing.css'
 import './styles/supporting-pages.css'
 import './styles/responsive.css'
+import './components/reactbits/reactbits.css'
 
 export default function PublicSite() {
   return (
