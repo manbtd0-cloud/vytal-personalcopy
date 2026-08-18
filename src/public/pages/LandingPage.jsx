@@ -4,6 +4,7 @@ import ProcessSection from '../components/home/ProcessSection.jsx'
 import ProductProofSection from '../components/home/ProductProofSection.jsx'
 import ScreeningEcosystemSection from '../components/home/ScreeningEcosystemSection.jsx'
 import TrustSection from '../components/home/TrustSection.jsx'
+import AiExplanationSection from '../components/home/AiExplanationSection.jsx'
 
 export default function LandingPage() {
   return (
@@ -14,6 +15,7 @@ export default function LandingPage() {
       <ProductProofSection />
       <ScreeningEcosystemSection />
       <TrustSection />
+      <AiExplanationSection />
     </div>
   )
 }
