@@ -1,3 +1,4 @@
+import { forwardRef } from 'react'
 import SectionShell from '../SectionShell.jsx'
 import CardSwap, { Card } from '../reactbits/CardSwap.jsx'
 import { homeContent } from '../../content/home.js'
@@ -14,9 +15,9 @@ function DemoChrome({ step, children }) {
   )
 }
 
-function AcquisitionCard() {
+const AcquisitionCard = forwardRef(function AcquisitionCard({ style }, ref) {
   return (
-    <Card className="product-demo-card product-demo-card--acquisition">
+    <Card ref={ref} style={style} className="product-demo-card product-demo-card--acquisition">
       <DemoChrome step="01 / ACQUISITION">
         <div className="demo-camera">
           <div className="demo-camera__oval" aria-hidden="true">
@@ -41,11 +42,11 @@ function AcquisitionCard() {
       </DemoChrome>
     </Card>
   )
-}
+})
 
-function QualityCard() {
+const QualityCard = forwardRef(function QualityCard({ style }, ref) {
   return (
-    <Card className="product-demo-card product-demo-card--quality">
+    <Card ref={ref} style={style} className="product-demo-card product-demo-card--quality">
       <DemoChrome step="02 / QUALITY">
         <div className="demo-quality">
           <div className="demo-quality__status">
@@ -69,11 +70,11 @@ function QualityCard() {
       </DemoChrome>
     </Card>
   )
-}
+})
 
-function ResultCard() {
+const ResultCard = forwardRef(function ResultCard({ style }, ref) {
   return (
-    <Card className="product-demo-card product-demo-card--result">
+    <Card ref={ref} style={style} className="product-demo-card product-demo-card--result">
       <DemoChrome step="03 / EXPLANATION">
         <div className="demo-result">
           <div className="demo-result__badge">EXAMPLE RESULT</div>
@@ -94,7 +95,7 @@ function ResultCard() {
       </DemoChrome>
     </Card>
   )
-}
+})
 
 export default function ProductProofSection() {
   const { productProof } = homeContent
