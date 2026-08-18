@@ -139,17 +139,16 @@ Shared footer elements include:
 
 - anniversary/footer logo;
 - YouTube;
-- LinkedIn asset in the final footer bundle;
+- Instagram;
 - Facebook;
 - Twitter;
-- Instagram link visible in parsed page navigation/footer data on several routes;
 - 2021 copyright line.
 
 Key footer asset filenames include:
 
 - `logo-footer.svg`
 - `yt.svg`
-- `in.svg`
+- `in.svg` (Instagram)
 - `fb.svg`
 - `tw.svg`
 
