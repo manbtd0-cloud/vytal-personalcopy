@@ -12,7 +12,11 @@ test('home shows a real Vytal-style product flow', () => {
   expect(
     screen.getByRole('heading', { name: /a real screening flow, not just a research diagram/i }),
   ).toBeInTheDocument()
-  expect(screen.getByText('Acquisition')).toBeInTheDocument()
-  expect(screen.getByText('Signal Quality')).toBeInTheDocument()
-  expect(screen.getByText('Result Explained')).toBeInTheDocument()
+
+  const acquisition = screen.getByRole('heading', { name: 'Acquisition' })
+  expect(acquisition).toBeInTheDocument()
+  expect(acquisition.closest('article')).toHaveStyle({ width: '560px', height: '420px' })
+
+  expect(screen.getByRole('heading', { name: 'Signal Quality' })).toBeInTheDocument()
+  expect(screen.getByRole('heading', { name: 'Result Explained' })).toBeInTheDocument()
 })
