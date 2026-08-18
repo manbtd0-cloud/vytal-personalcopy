@@ -1,23 +1,37 @@
-import { useState } from 'react'
+import { lazy, Suspense } from 'react'
 import { Routes, Route } from 'react-router-dom'
-import NavBar from './components/NavBar.jsx'
+import ClinicalLayout from './layouts/ClinicalLayout.jsx'
 import ScanPage from './pages/ScanPage.jsx'
 import DashboardPage from './pages/DashboardPage.jsx'
 import ReportPage from './pages/ReportPage.jsx'
-import SplashAnimation from './components/SplashAnimation.jsx'
+
+const PublicSite = lazy(() => import('./public/PublicSite.jsx'))
+
+function PublicRouteFallback() {
+  return (
+    <div className="public-route-fallback" role="status">
+      <span>VYTAL</span>
+    </div>
+  )
+}
 
 export default function App() {
-  const [showSplash, setShowSplash] = useState(true)
-
   return (
-    <div className="app-shell">
-      {showSplash && <SplashAnimation onFinish={() => setShowSplash(false)} />}
-      <NavBar onReplayIntro={() => setShowSplash(true)} />
-      <Routes>
-        <Route path="/" element={<ScanPage />} />
+    <Routes>
+      <Route element={<ClinicalLayout />}>
+        <Route path="/scan" element={<ScanPage />} />
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/report" element={<ReportPage />} />
-      </Routes>
-    </div>
+      </Route>
+
+      <Route
+        path="/*"
+        element={
+          <Suspense fallback={<PublicRouteFallback />}>
+            <PublicSite />
+          </Suspense>
+        }
+      />
+    </Routes>
   )
 }

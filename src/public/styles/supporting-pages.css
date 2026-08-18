@@ -1,0 +1,9 @@
+.public-supporting-page {
+  min-height: 70vh;
+}
+
+.public-supporting-page__content {
+  display: grid;
+  gap: 32px;
+  margin-top: 64px;
+}
