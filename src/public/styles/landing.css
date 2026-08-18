@@ -1,0 +1,18 @@
+.landing-page {
+  overflow: clip;
+}
+
+.landing-section-heading {
+  margin: 0;
+  max-width: 13ch;
+  font-size: var(--public-h2-size);
+  line-height: 0.98;
+  letter-spacing: -0.055em;
+}
+
+.landing-section-copy {
+  max-width: var(--public-copy);
+  color: var(--text-gray);
+  font-size: var(--public-body-lg);
+  line-height: 1.7;
+}

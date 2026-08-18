@@ -1,0 +1,21 @@
+@media (max-width: 720px) {
+  .public-site {
+    --public-section-y: 84px;
+    --public-gutter: 20px;
+  }
+
+  .public-page-intro h1 {
+    max-width: 15ch;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .public-site *,
+  .public-site *::before,
+  .public-site *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

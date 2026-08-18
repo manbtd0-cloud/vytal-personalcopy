@@ -1,0 +1,18 @@
+.public-site {
+  --public-bg-deep: #0d0c0b;
+  --public-bg: #11100f;
+  --public-surface: #181512;
+  --public-surface-raised: #211d19;
+  --public-border: #332d28;
+  --public-ivory: #f1ede7;
+  --public-ink: #171412;
+  --public-shell: 1240px;
+  --public-gutter: clamp(20px, 4vw, 64px);
+  --public-section-y: clamp(88px, 11vw, 168px);
+  --public-hero-size: clamp(3.7rem, 9vw, 9rem);
+  --public-h2-size: clamp(2.6rem, 6vw, 6rem);
+  --public-h3-size: clamp(1.5rem, 2.7vw, 2.6rem);
+  --public-body-lg: clamp(1.05rem, 1.5vw, 1.35rem);
+  --public-copy: min(70ch, 100%);
+  --public-ease: cubic-bezier(0.16, 1, 0.3, 1);
+}
