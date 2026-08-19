@@ -45,7 +45,10 @@ test('Medical Disclaimer makes diagnosis, uncertainty and urgent-care boundaries
 
   const urgent = document.querySelector('#medical-urgent')
   expect(urgent).toBeInTheDocument()
-  expect(within(urgent).getByText(/urgent symptoms/i)).toBeInTheDocument()
+  expect(
+    within(urgent).getByRole('heading', { name: /urgent symptoms override the app/i }),
+  ).toBeInTheDocument()
+  expect(within(urgent).getByText(/seek appropriate urgent medical care/i)).toBeInTheDocument()
 
   const confirmation = document.querySelector('#medical-confirmation')
   expect(confirmation).toBeInTheDocument()
