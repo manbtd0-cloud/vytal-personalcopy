@@ -1,4 +1,5 @@
 import { homeScreeningTiles } from './screenings.js'
+import { SUPPORTED_LANGUAGES } from '../../lib/ai.js'
 
 export const homeReference = {
   hero: {
@@ -31,4 +32,41 @@ export const homeSignalBandItems = homeScreeningTiles.map(({ slug, title, status
   label: title,
   status,
   isResearch: status !== 'Core',
+}))
+
+export const homeEvidenceItems = [
+  {
+    id: 'clinician-voice',
+    type: 'pending-voice',
+    label: 'Clinician / researcher voice pending',
+    quote: null,
+    mediaSlotId: 'HOME-VOICE-CLINICIAN-01',
+  },
+  {
+    id: 'health-worker-voice',
+    type: 'pending-voice',
+    label: 'Health-worker voice pending',
+    quote: null,
+    mediaSlotId: 'HOME-VOICE-HEALTHWORKER-01',
+  },
+  {
+    id: 'research-note',
+    type: 'research-note',
+    label: 'Research evidence',
+    body: 'Remote optical physiology has a published lineage. The Science page separates primary research, prototype implementation and current limitations.',
+    mediaSlotId: 'HOME-EVIDENCE-RESEARCH-01',
+  },
+  {
+    id: 'owned-principle',
+    type: 'owned-principle',
+    label: 'Vytal principle',
+    body: 'AI explains the measurements. It doesn’t invent them.',
+    mediaSlotId: 'HOME-PRINCIPLE-01',
+  },
+]
+
+export const homeLanguageItems = SUPPORTED_LANGUAGES.map(({ code, name, label }) => ({
+  code,
+  name,
+  label,
 }))

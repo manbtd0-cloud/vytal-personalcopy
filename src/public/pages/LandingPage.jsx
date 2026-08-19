@@ -6,6 +6,9 @@ import ContextStoriesChapter from '../components/home-reference/ContextStoriesCh
 import SignalJourneyChapter from '../components/home-reference/SignalJourneyChapter.jsx'
 import SignalMarqueeChapter from '../components/home-reference/SignalMarqueeChapter.jsx'
 import DocumentaryRunChapter from '../components/home-reference/DocumentaryRunChapter.jsx'
+import TrustResetChapter from '../components/home-reference/TrustResetChapter.jsx'
+import EvidenceVoicesChapter from '../components/home-reference/EvidenceVoicesChapter.jsx'
+import LanguageBandChapter from '../components/home-reference/LanguageBandChapter.jsx'
 import CameraScienceSection from '../components/home/CameraScienceSection.jsx'
 import ProcessSection from '../components/home/ProcessSection.jsx'
 import ProductProofSection from '../components/home/ProductProofSection.jsx'
@@ -29,6 +32,9 @@ export default function LandingPage() {
       <SignalJourneyChapter />
       <SignalMarqueeChapter />
       <DocumentaryRunChapter />
+      <TrustResetChapter />
+      <EvidenceVoicesChapter />
+      <LanguageBandChapter />
       <CameraScienceSection />
       <ProcessSection />
       <ProductProofSection />
