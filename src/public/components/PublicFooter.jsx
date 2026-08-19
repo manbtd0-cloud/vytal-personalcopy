@@ -22,16 +22,23 @@ const footerGroups = [
 
 export default function PublicFooter() {
   return (
-    <footer className="public-footer">
+    <footer className="public-footer" data-public-theme="dark">
+      <div className="public-shell public-footer__intro">
+        <p className="public-footer__eyebrow">ACCESSIBLE HEALTH-SENSING RESEARCH</p>
+        <p className="public-footer__statement">A useful first health signal should be easier to reach.</p>
+      </div>
+
       <div className="public-shell public-footer__grid">
         <div className="public-footer__brand-block">
           <Link className="public-footer__brand" to="/">
-            <PulseMark size={28} />
+            <PulseMark size={30} />
             <span>VYTAL</span>
           </Link>
-          <p>Vytal is a screening and research prototype, not a diagnostic medical device.</p>
+          <p>
+            Vytal explores camera-first screening, uncertainty-aware signal interpretation and continuity of health context.
+          </p>
           <Link className="public-footer__scan" to="/scan">
-            Start Screening
+            Start Screening ↗
           </Link>
         </div>
 
@@ -46,8 +53,11 @@ export default function PublicFooter() {
           </div>
         ))}
       </div>
+
+      <div className="public-footer__wordmark" aria-hidden="true">VYTAL</div>
+
       <div className="public-shell public-footer__bottom">
-        <span>Camera-first health screening research.</span>
+        <span>Screening and research prototype.</span>
         <span>Screening support, not diagnosis.</span>
       </div>
     </footer>

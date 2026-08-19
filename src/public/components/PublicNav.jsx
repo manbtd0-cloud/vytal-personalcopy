@@ -1,36 +1,79 @@
 import { useEffect, useRef, useState } from 'react'
 import { NavLink } from 'react-router-dom'
-import { gsap } from 'gsap'
 import PulseMark from '../../components/PulseMark.jsx'
 import { publicNavItems } from '../content/navigation.js'
 
-export default function PublicNav() {
+function focusableNodes(node) {
+  if (!node) return []
+  return Array.from(node.querySelectorAll('a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])'))
+}
+
+export default function PublicNav({ theme = 'dark' }) {
   const [mobileOpen, setMobileOpen] = useState(false)
-  const wrapRef = useRef(null)
+  const [scrolled, setScrolled] = useState(false)
+  const menuRef = useRef(null)
+  const menuButtonRef = useRef(null)
+  const previousFocusRef = useRef(null)
 
   useEffect(() => {
-    const node = wrapRef.current
-    if (!node) return undefined
-    const reduce = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    const update = () => setScrolled(window.scrollY > 24)
+    update()
+    window.addEventListener('scroll', update, { passive: true })
+    return () => window.removeEventListener('scroll', update)
+  }, [])
 
-    if (reduce) {
-      gsap.set(node, { opacity: 1, y: 0 })
-      return undefined
+  useEffect(() => {
+    if (!mobileOpen) return undefined
+
+    previousFocusRef.current = document.activeElement
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+
+    const menu = menuRef.current
+    const nodes = focusableNodes(menu)
+    nodes[0]?.focus()
+
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        setMobileOpen(false)
+        return
+      }
+
+      if (event.key !== 'Tab') return
+      const currentNodes = focusableNodes(menuRef.current)
+      if (!currentNodes.length) return
+      const first = currentNodes[0]
+      const last = currentNodes[currentNodes.length - 1]
+
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault()
+        last.focus()
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault()
+        first.focus()
+      }
     }
 
-    const tween = gsap.fromTo(
-      node,
-      { opacity: 0, y: -14 },
-      { opacity: 1, y: 0, duration: 0.72, delay: 0.08, ease: 'power3.out' },
-    )
+    document.addEventListener('keydown', onKeyDown)
 
-    return () => tween.kill()
-  }, [])
+    return () => {
+      document.removeEventListener('keydown', onKeyDown)
+      document.body.style.overflow = previousOverflow
+      const previous = previousFocusRef.current
+      if (previous && typeof previous.focus === 'function') previous.focus()
+    }
+  }, [mobileOpen])
 
   const closeMobile = () => setMobileOpen(false)
 
   return (
-    <header ref={wrapRef} className="public-nav-wrap">
+    <header
+      className="public-nav-wrap"
+      data-public-nav
+      data-nav-theme={theme}
+      data-nav-scrolled={scrolled ? 'true' : 'false'}
+    >
       <nav className="public-nav public-shell" aria-label="Public">
         <NavLink className="public-nav__brand" to="/" onClick={closeMobile}>
           <PulseMark size={28} />
@@ -54,8 +97,10 @@ export default function PublicNav() {
         </NavLink>
 
         <button
+          ref={menuButtonRef}
           type="button"
           className="public-nav__menu-button"
+          aria-label={mobileOpen ? 'Close menu' : 'Menu'}
           aria-expanded={mobileOpen}
           aria-controls="public-mobile-menu"
           onClick={() => setMobileOpen((open) => !open)}
@@ -64,20 +109,31 @@ export default function PublicNav() {
         </button>
       </nav>
 
-      {mobileOpen && (
-        <nav id="public-mobile-menu" className="public-mobile-menu" aria-label="Public mobile">
-          <div className="public-shell public-mobile-menu__inner">
-            {publicNavItems.map((item) => (
+      {mobileOpen ? (
+        <nav
+          ref={menuRef}
+          id="public-mobile-menu"
+          className="public-mobile-menu"
+          aria-label="Public mobile"
+        >
+          <div className="public-mobile-menu__meta" aria-hidden="true">
+            <span>VYTAL / PUBLIC</span>
+            <span>SCREENING SUPPORT, NOT DIAGNOSIS</span>
+          </div>
+          <div className="public-mobile-menu__links">
+            {publicNavItems.map((item, index) => (
               <NavLink key={item.to} to={item.to} onClick={closeMobile}>
+                <span>{String(index + 1).padStart(2, '0')}</span>
                 {item.label}
               </NavLink>
             ))}
-            <NavLink className="public-mobile-menu__cta" to="/scan" onClick={closeMobile}>
-              Start Screening
-            </NavLink>
           </div>
+          <NavLink className="public-mobile-menu__cta" to="/scan" onClick={closeMobile}>
+            <span>Enter Vytal</span>
+            <strong>Start Screening ↗</strong>
+          </NavLink>
         </nav>
-      )}
+      ) : null}
     </header>
   )
 }

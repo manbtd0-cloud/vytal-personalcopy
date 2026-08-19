@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { expect, it } from 'vitest'
 import PublicNav from '../../src/public/components/PublicNav.jsx'
@@ -29,6 +29,7 @@ it('opens a full public mobile menu and exposes an explicit close path', () => {
   fireEvent.click(button)
 
   expect(button).toHaveAttribute('aria-expanded', 'true')
-  expect(screen.getByRole('navigation', { name: /public mobile/i })).toBeInTheDocument()
-  expect(screen.getByRole('link', { name: /start screening/i })).toHaveAttribute('href', '/scan')
+  const mobileNav = screen.getByRole('navigation', { name: /public mobile/i })
+  expect(mobileNav).toBeInTheDocument()
+  expect(within(mobileNav).getByRole('link', { name: /start screening/i })).toHaveAttribute('href', '/scan')
 })
