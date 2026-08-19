@@ -4,6 +4,8 @@ import ProofFieldChapter from '../components/home-reference/ProofFieldChapter.js
 import ScienceLineageChapter from '../components/home-reference/ScienceLineageChapter.jsx'
 import ContextStoriesChapter from '../components/home-reference/ContextStoriesChapter.jsx'
 import SignalJourneyChapter from '../components/home-reference/SignalJourneyChapter.jsx'
+import SignalMarqueeChapter from '../components/home-reference/SignalMarqueeChapter.jsx'
+import DocumentaryRunChapter from '../components/home-reference/DocumentaryRunChapter.jsx'
 import CameraScienceSection from '../components/home/CameraScienceSection.jsx'
 import ProcessSection from '../components/home/ProcessSection.jsx'
 import ProductProofSection from '../components/home/ProductProofSection.jsx'
@@ -25,6 +27,8 @@ export default function LandingPage() {
       <ScienceLineageChapter />
       <ContextStoriesChapter />
       <SignalJourneyChapter />
+      <SignalMarqueeChapter />
+      <DocumentaryRunChapter />
       <CameraScienceSection />
       <ProcessSection />
       <ProductProofSection />

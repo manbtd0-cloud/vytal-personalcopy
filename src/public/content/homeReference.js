@@ -1,3 +1,5 @@
+import { homeScreeningTiles } from './screenings.js'
+
 export const homeReference = {
   hero: {
     kicker: 'OPTICAL INPUT / VYTAL',
@@ -23,3 +25,10 @@ export const homeReference = {
     cta: 'Explore the science',
   },
 }
+
+export const homeSignalBandItems = homeScreeningTiles.map(({ slug, title, status }) => ({
+  id: slug,
+  label: title,
+  status,
+  isResearch: status !== 'Core',
+}))
