@@ -44,3 +44,15 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Diff check
+        run: git diff --check
+
+      - name: Working tree is clean
+        shell: bash
+        run: |
+          status="$(git status --short)"
+          if [ -n "$status" ]; then
+            echo "$status"
+            exit 1
+          fi
