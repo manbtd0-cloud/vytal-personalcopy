@@ -27,8 +27,9 @@ test('Home turns the first three impact scenarios into nonuniform story previews
   expect(within(chapter).getAllByText(/illustrative scenario/i)).toHaveLength(3)
 
   fireEvent.click(within(chapter).getByRole('button', { name: /open individual at home/i }))
-  expect(screen.getAllByRole('dialog')).toHaveLength(1)
-  expect(screen.getByRole('heading', { name: /individual at home/i })).toBeInTheDocument()
+  const dialog = screen.getByRole('dialog')
+  expect(dialog).toBeInTheDocument()
+  expect(within(dialog).getByRole('heading', { name: /individual at home/i })).toBeInTheDocument()
 
   fireEvent.keyDown(document, { key: 'Escape' })
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
