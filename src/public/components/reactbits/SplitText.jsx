@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { gsap } from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
+import useReducedMotion from '../../hooks/useReducedMotion.js'
 
 gsap.registerPlugin(ScrollTrigger)
 
@@ -20,6 +21,7 @@ export default function SplitText({
 }) {
   const ref = useRef(null)
   const Tag = tag
+  const reducedMotion = useReducedMotion()
 
   const pieces = useMemo(() => {
     if (splitType === 'chars') return Array.from(text)
@@ -30,9 +32,8 @@ export default function SplitText({
     const node = ref.current
     if (!node) return undefined
     const targets = node.querySelectorAll('[data-rb-split-piece]')
-    const reduce = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
-    if (reduce) {
+    if (reducedMotion) {
       gsap.set(targets, { opacity: 1, y: 0, clearProps: 'willChange' })
       onAnimationComplete?.()
       return undefined
@@ -62,7 +63,7 @@ export default function SplitText({
       tween.scrollTrigger?.kill()
       tween.kill()
     }
-  }, [animateOnMount, delay, duration, ease, from, onAnimationComplete, threshold, to])
+  }, [animateOnMount, delay, duration, ease, from, onAnimationComplete, reducedMotion, threshold, to])
 
   return (
     <Tag ref={ref} className={`rb-split-text ${className}`.trim()} aria-label={text}>

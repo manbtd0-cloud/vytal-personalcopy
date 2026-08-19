@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import useReducedMotion from '../../hooks/useReducedMotion.js'
 
 export default function Magnet({
   children,
@@ -12,16 +13,14 @@ export default function Magnet({
   const ref = useRef(null)
   const [active, setActive] = useState(false)
   const [position, setPosition] = useState({ x: 0, y: 0 })
+  const reducedMotion = useReducedMotion()
 
   useEffect(() => {
-    const reduce = typeof window.matchMedia === 'function'
-      ? window.matchMedia('(prefers-reduced-motion: reduce)')
-      : null
     const coarse = typeof window.matchMedia === 'function'
       ? window.matchMedia('(pointer: coarse)')
       : null
 
-    const shouldDisable = () => disabled || reduce?.matches || coarse?.matches
+    const shouldDisable = () => disabled || reducedMotion || coarse?.matches
 
     const reset = () => {
       setActive(false)
@@ -56,17 +55,15 @@ export default function Magnet({
     }
 
     window.addEventListener('pointermove', handlePointerMove, { passive: true })
-    reduce?.addEventListener?.('change', reset)
     coarse?.addEventListener?.('change', reset)
 
     if (shouldDisable()) reset()
 
     return () => {
       window.removeEventListener('pointermove', handlePointerMove)
-      reduce?.removeEventListener?.('change', reset)
       coarse?.removeEventListener?.('change', reset)
     }
-  }, [disabled, magnetStrength, padding])
+  }, [disabled, magnetStrength, padding, reducedMotion])
 
   return (
     <span ref={ref} className={`rb-magnet ${wrapperClassName}`.trim()} {...props}>

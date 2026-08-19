@@ -8,6 +8,7 @@ import {
   useRef,
 } from 'react'
 import { gsap } from 'gsap'
+import useReducedMotion from '../../hooks/useReducedMotion.js'
 
 export const Card = forwardRef(function Card({ className = '', ...props }, ref) {
   return <article ref={ref} className={`rb-swap-card ${className}`.trim()} {...props} />
@@ -52,10 +53,10 @@ export default function CardSwap({
   const timelineRef = useRef(null)
   const intervalRef = useRef(null)
   const containerRef = useRef(null)
+  const reducedMotion = useReducedMotion()
 
   useEffect(() => {
-    const reduce = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    if (reduce || refs.length < 2) return undefined
+    if (reducedMotion || refs.length < 2) return undefined
 
     refs.forEach((item, index) => {
       if (item.current) place(item.current, slotFor(index, cardDistance, verticalDistance, refs.length), skewAmount)
@@ -125,7 +126,7 @@ export default function CardSwap({
         node.removeEventListener('pointerleave', resume)
       }
     }
-  }, [cardDistance, delay, pauseOnHover, refs, skewAmount, verticalDistance])
+  }, [cardDistance, delay, pauseOnHover, reducedMotion, refs, skewAmount, verticalDistance])
 
   const rendered = childArray.map((child, index) => {
     if (!isValidElement(child)) return child

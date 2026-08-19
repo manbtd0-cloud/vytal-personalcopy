@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { gsap } from 'gsap'
+import useReducedMotion from '../../hooks/useReducedMotion.js'
 
 export default function PixelTransition({
   firstContent,
@@ -13,6 +14,7 @@ export default function PixelTransition({
   const gridRef = useRef(null)
   const firstRef = useRef(null)
   const secondRef = useRef(null)
+  const reducedMotion = useReducedMotion()
   const pixels = useMemo(
     () => Array.from({ length: gridSize * gridSize }, (_, index) => index),
     [gridSize],
@@ -25,12 +27,11 @@ export default function PixelTransition({
     if (!grid || !first || !second) return undefined
 
     const pixelNodes = grid.querySelectorAll('[data-rb-pixel]')
-    const reduce = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
     gsap.killTweensOf(pixelNodes)
     gsap.killTweensOf([first, second])
 
-    if (reduce) {
+    if (reducedMotion) {
       gsap.set(pixelNodes, { opacity: 0 })
       gsap.set(first, { opacity: active ? 0 : 1 })
       gsap.set(second, { opacity: active ? 1 : 0 })
@@ -56,7 +57,7 @@ export default function PixelTransition({
     })
 
     return () => timeline.kill()
-  }, [active, animationStepDuration, gridSize])
+  }, [active, animationStepDuration, gridSize, reducedMotion])
 
   return (
     <div className={`rb-pixel-transition ${className}`.trim()} data-active={active ? 'true' : 'false'}>
