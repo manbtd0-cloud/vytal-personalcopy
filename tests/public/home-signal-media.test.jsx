@@ -29,10 +29,14 @@ test('Home signal band is derived from canonical screening titles and keeps matu
   expect(chapter).toBeInTheDocument()
   expect(chapter.querySelector('[data-loop-band]')).toBeInTheDocument()
 
-  const queries = within(chapter)
+  const hiddenList = chapter.querySelector('.visually-hidden-list')
+  expect(hiddenList).toBeInTheDocument()
+
   for (const item of homeSignalBandItems) {
-    expect(queries.getByText(item.label, { selector: '.visually-hidden-list *' })).toBeInTheDocument()
-    expect(queries.getByText(item.status, { selector: '.visually-hidden-list *' })).toBeInTheDocument()
+    const label = within(hiddenList).getByText(item.label)
+    const row = label.closest('li')
+    expect(row).not.toBeNull()
+    expect(within(row).getByText(item.status)).toBeInTheDocument()
   }
 })
 
