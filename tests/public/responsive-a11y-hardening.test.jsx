@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { MemoryRouter } from 'react-router-dom'
 import PublicNav from '../../src/public/components/PublicNav.jsx'
 import LoopBand from '../../src/public/components/system/LoopBand.jsx'
@@ -36,10 +37,7 @@ test('mobile menu focus trap includes the visible close control and restores foc
 })
 
 test('public shell clips accidental page-level horizontal overflow', () => {
-  const css = readFileSync(
-    new URL('../../src/public/styles/public-layout.css', import.meta.url),
-    'utf8',
-  )
+  const css = readFileSync(resolve(process.cwd(), 'src/public/styles/public-layout.css'), 'utf8')
 
   const publicSiteRule = css.match(/\.public-site\s*\{[^}]*\}/)?.[0] ?? ''
   expect(publicSiteRule).toMatch(/overflow-x:\s*clip\s*;/)
