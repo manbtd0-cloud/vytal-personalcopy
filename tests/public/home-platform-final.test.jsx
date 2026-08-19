@@ -39,7 +39,9 @@ test('Home platform arc separates current camera foundation from future sensing 
     expect(chapter.querySelector(`[data-media-slot="${slotId}"]`)).toBeInTheDocument()
   }
 
-  expect(queries.getByText('Research / future direction')).toBeInTheDocument()
+  const futureBeat = chapter.querySelector('[data-platform-beat="future"]')
+  expect(futureBeat).toBeInTheDocument()
+  expect(within(futureBeat).getAllByText('Research / future direction')).toHaveLength(2)
   expect(queries.getByRole('link', { name: /explore the platform/i })).toHaveAttribute('href', '/platform')
 })
 
