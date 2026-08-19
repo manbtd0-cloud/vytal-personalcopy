@@ -23,7 +23,10 @@ test('Privacy documents the current prototype data path without inventing a futu
   expect(within(document).getByText(/camera processing happens in the browser/i)).toBeInTheDocument()
   expect(within(document).getByText(/Groq or Qwen/i)).toBeInTheDocument()
   expect(within(document).getByText(/configured cloud sync endpoint/i)).toBeInTheDocument()
-  expect(within(document).getByText(/prototype behavior/i)).toBeInTheDocument()
+
+  const prototypeStatus = document.querySelector('#privacy-status')
+  expect(prototypeStatus).toBeInTheDocument()
+  expect(within(prototypeStatus).getByText(/prototype behavior/i)).toBeInTheDocument()
 })
 
 test('Medical Disclaimer makes diagnosis, uncertainty and urgent-care boundaries first-class', () => {
@@ -39,8 +42,14 @@ test('Medical Disclaimer makes diagnosis, uncertainty and urgent-care boundaries
   expect(within(document).getByText(/not a medical diagnosis/i)).toBeInTheDocument()
   expect(within(document).getByText(/experimental or research/i)).toBeInTheDocument()
   expect(within(document).getByText(/low confidence/i)).toBeInTheDocument()
-  expect(within(document).getByText(/urgent symptoms/i)).toBeInTheDocument()
-  expect(within(document).getByText(/clinical confirmation/i)).toBeInTheDocument()
+
+  const urgent = document.querySelector('#medical-urgent')
+  expect(urgent).toBeInTheDocument()
+  expect(within(urgent).getByText(/urgent symptoms/i)).toBeInTheDocument()
+
+  const confirmation = document.querySelector('#medical-confirmation')
+  expect(confirmation).toBeInTheDocument()
+  expect(within(confirmation).getByText(/clinical confirmation/i)).toBeInTheDocument()
 })
 
 test('Unknown public routes resolve to a useful branded 404 without capturing clinical paths', async () => {
