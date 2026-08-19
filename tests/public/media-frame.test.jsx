@@ -33,3 +33,52 @@ it('renders a real image while preserving the same frame contract', () => {
   expect(screen.getByRole('img', { name: 'Test media' })).toHaveAttribute('src', '/test.jpg')
   expect(container.querySelector('[data-media-slot="TEST-SLOT"]')).toHaveAttribute('data-media-status', 'final')
 })
+
+it('plays real video only while visible and pauses it again offscreen', () => {
+  const originalIntersectionObserver = globalThis.IntersectionObserver
+  const observers = []
+
+  globalThis.IntersectionObserver = class {
+    constructor(callback) {
+      this.callback = callback
+      this.observe = vi.fn()
+      this.disconnect = vi.fn()
+      observers.push(this)
+    }
+  }
+
+  const play = vi.spyOn(HTMLMediaElement.prototype, 'play').mockImplementation(() => Promise.resolve())
+  const pause = vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {})
+  const videoSlot = {
+    ...placeholder,
+    id: 'TEST-VIDEO',
+    kind: 'video',
+    src: '/test.mp4',
+    poster: '/poster.jpg',
+    alt: 'Ambient screening footage',
+    status: 'final',
+  }
+
+  const { container, unmount } = render(<MediaFrame slot={videoSlot} />)
+  const video = container.querySelector('video')
+
+  expect(video).toBeInTheDocument()
+  expect(video).not.toHaveAttribute('autoplay')
+  expect(observers).toHaveLength(1)
+  expect(observers[0].observe).toHaveBeenCalledWith(video)
+  expect(play).not.toHaveBeenCalled()
+
+  observers[0].callback([{ target: video, isIntersecting: true }])
+  expect(play).toHaveBeenCalledTimes(1)
+
+  observers[0].callback([{ target: video, isIntersecting: false }])
+  expect(pause).toHaveBeenCalledTimes(1)
+
+  unmount()
+  expect(observers[0].disconnect).toHaveBeenCalledTimes(1)
+  expect(pause).toHaveBeenCalledTimes(2)
+
+  play.mockRestore()
+  pause.mockRestore()
+  globalThis.IntersectionObserver = originalIntersectionObserver
+})
