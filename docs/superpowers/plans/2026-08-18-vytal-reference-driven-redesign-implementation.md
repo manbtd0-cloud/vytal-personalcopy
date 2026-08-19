@@ -1,143 +1,264 @@
-# Vytal Reference-Driven Public Experience Implementation Plan
+# Vytal Reference-Driven Public Experience — Canonical Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: use `superpowers:executing-plans` for inline execution or `superpowers:subagent-driven-development` for delegated execution. Follow TDD and verification gates task-by-task.
 
-**Goal:** Rebuild Vytal's public experience into a reference-quality interactive health-sensing documentary that reproduces the Save a Child's Heart anniversary site's pacing, page specialization, semantic motion, media rhythm and storytelling quality while using original Vytal branding, content, Signal Thread visuals, honest medical claims, and production-sized empty media placeholders.
+**Goal:** Rebuild Vytal’s public experience into a reference-quality interactive health-sensing documentary that preserves the strongest qualities of the Save a Child’s Heart 25th-anniversary experience—cinematic pacing, semantic motion, page specialization, irregular editorial composition, human/media rhythm, longitudinal storytelling, and strong conversion closes—while using original Vytal branding, truthful medical content, the Vytal-native Signal Thread system, and production-sized empty media frames wherever final imagery is not yet available.
 
-**Architecture:** Preserve the existing lazy public/clinical routing boundary and GSAP-only animation runtime. Build a reusable public-system layer (`MediaFrame`, `SignalThread`, theme boundaries, LoopBand, StoryOverlay), then replace the current uniform Home sections in staged visual gates before adding route-specific Screenings, Science, Impact, About, Journey, Platform and legal pages. Public content remains structured and truth-driven; missing human media and social proof remain explicit first-class placeholders rather than fabricated content.
+**Execution base:** `b444173f299f5e2022e53890363e77af877e5246` (last green public-site implementation)
 
-**Tech Stack:** React 18, React Router 6, Vite 5, GSAP 3 + `@gsap/react`, CSS/SVG, existing ReactBits source forks where approved, Vitest 3, Testing Library, jsdom.
+**Do not base execution on:** `93be2495f300d6d9f412d10b87fd2ecf0e5905bf` (RED-only unfinished Screenings test commit)
 
-**Spec:** `docs/superpowers/specs/2026-08-18-vytal-reference-driven-public-site-design.md`
+**Architecture:** Preserve the existing lazy public/clinical split. Build shared public-system primitives first, replace Home in visually reviewed batches, then implement each supporting route as a genuinely different narrative mode. GSAP remains the single animation runtime. Missing media is represented by final-geometry `MediaFrame` placeholders; proof is never fabricated to fill reference-shaped layouts.
 
-**Companion plans:**
-- `docs/superpowers/plans/2026-08-18-vytal-reference-redesign-architecture.md`
-- `docs/superpowers/plans/2026-08-18-vytal-reference-home-execution.md`
-- `docs/superpowers/plans/2026-08-18-vytal-reference-supporting-routes.md`
-- `docs/superpowers/plans/2026-08-18-vytal-reference-qa-performance.md`
+**Tech stack:** React 18, React Router 6, Vite 5, GSAP 3, `@gsap/react`, CSS/SVG, existing reviewed ReactBits source forks, Vitest 3, Testing Library, jsdom.
 
-## Global Constraints
+## Required companion documents
 
-- Start implementation from green commit `b444173f299f5e2022e53890363e77af877e5246`, not RED-only `93be2495f300d6d9f412d10b87fd2ecf0e5905bf`.
-- `/scan`, `/dashboard`, `/report` remain clinical and are not visually redesigned by this plan.
-- Public marketing code remains lazily isolated from the clinical critical bundle.
-- GSAP + `@gsap/react` remain the only JS animation runtime.
-- No Three.js, OGL, Lenis, Motion/Framer Motion, face-api.js, shader/particle library, or global custom cursor is added by default.
-- Signal Thread must not use a literal ECG/heartbeat identity.
-- Missing media renders as production-sized empty `MediaFrame`; never use random stock fallback or shimmer placeholders.
-- No fake patients, testimonials, clinicians, hospitals, countries, adoption statistics or outcomes.
-- All current human scenarios are visibly labelled `Illustrative scenario`; `/journey` says `ILLUSTRATIVE SCREENING JOURNEY — NOT A REAL PATIENT CASE`.
-- Screening maturity comes from `src/public/content/screenings.js`; marketing copy never upgrades status.
-- Use `screen`, `estimate`, `proxy`, `possible`, `trend`, `flag`, `confidence`, `confirmation recommended`; avoid unsupported diagnostic/medical-grade/replacement claims.
-- Future BLE/wearable/thermal/population features carry visible research/future/prototype status.
-- Reduced motion stops looping/pinning/parallax and renders complete static states.
-- Required visual QA widths: 360, 390, 430, 768, 1024, 1280, 1440, 1920 px as specified by visual gates.
-- Public landing JS target: roughly <100 kB gzip beyond shared React/router code where practical; any breach needs a concrete visible benefit.
-- Clinical bundle must not materially grow because of public visual components.
+Read these before executing tasks:
+
+1. `docs/superpowers/specs/2026-08-18-vytal-reference-driven-public-site-design.md`
+2. `docs/superpowers/specs/2026-08-18-vytal-sach25-reference-crosswalk.md`
+3. `docs/superpowers/specs/2026-08-18-vytal-reference-driven-route-blueprints.md`
+4. `docs/superpowers/specs/2026-08-18-vytal-motion-reactbits-system.md`
+5. `docs/superpowers/specs/2026-08-18-vytal-media-slot-manifest.md`
+6. `docs/superpowers/specs/2026-08-18-vytal-content-evidence-rules.md`
+7. `docs/superpowers/plans/2026-08-18-vytal-reference-redesign-architecture.md`
+8. `docs/superpowers/plans/2026-08-18-vytal-reference-home-execution.md`
+9. `docs/superpowers/plans/2026-08-18-vytal-reference-supporting-routes.md`
+10. `docs/superpowers/plans/2026-08-18-vytal-reference-qa-performance.md`
 
 ---
 
-## Phase 0 — Execution baseline
+# 0. Locked implementation decisions
 
-### Task 1: Create the clean redesign worktree and preserve the green baseline
+These are no longer implementation-time forks.
 
-**Files:**
-- No production file change required until branch/worktree setup is complete.
-- Bring docs from `landing-page-reference-redesign-plan` into the execution branch as documentation-only commits/cherry-picks if they are not already present.
+## 0.1 Animation runtime
 
-**Interfaces:**
-- Consumes: green commit `b444173f299f5e2022e53890363e77af877e5246`.
-- Produces: isolated implementation branch/worktree with all existing tests green before redesign code.
+Use only:
 
-- [ ] **Step 1: Create isolated worktree from the green commit**
+- `gsap`
+- `@gsap/react`
+- GSAP `ScrollTrigger`
+- CSS transitions/keyframes for trivial states
+
+Do not add:
+
+- Motion / Framer Motion
+- Lenis
+- Three.js
+- OGL
+- Locomotive Scroll
+- face-api.js for marketing decoration
+- a cursor library
+- a shader/particle library
+
+## 0.2 ReactBits decisions
+
+### Keep/adapt existing reviewed forks where useful
+
+- Split Text
+- Magnet
+- Scroll Reveal
+- Card Swap only if final Product/UI composition still benefits
+- Pixel Transition only if final raw→explained composition still benefits
+
+### Do not use ReactBits Scroll Velocity
+Its current source imports `motion/react`; build a custom GSAP/CSS `LoopBand` instead.
+
+### Do not use ReactBits Count Up
+Its current source imports `motion/react`; build a small GSAP `NumberReveal` utility instead.
+
+### Do not use ReactBits Masonry for the Home documentary run
+Although its current source is GSAP-only, the reference-inspired media run requires deterministic art-directed placement. Use explicit CSS Grid.
+
+### Do not base architecture on
+
+- Scroll Stack
+- Scanner
+- Grid Scan
+- Dark Veil
+- generic particles/galaxy/hyperspeed effects
+- Spotlight-card grids as the dominant page language
+
+ReactBits is an implementation toolkit, not the art director.
+
+## 0.3 Route-transition decision
+
+Do **not** build a speculative full-screen custom page-transition wipe in the baseline redesign. Exact reference-site page transitions were not verified. Implement reliable scroll restoration and subtle nav/theme continuity only. A route wipe may be reconsidered after all pages are visually approved, but it is not part of this plan.
+
+## 0.4 Media-layout decision
+
+The Home documentary image run uses a custom 12-column CSS grid with explicit placements. No generic masonry engine.
+
+## 0.5 Public vs clinical boundary
+
+Public redesign may be cinematic. These remain clinically restrained and outside visual redesign scope:
+
+- `/scan`
+- `/dashboard`
+- `/report`
+
+Public styles/GSAP work must not leak into those routes.
+
+## 0.6 Medical/proof honesty
+
+Never fabricate:
+
+- patients
+- testimonials
+- clinician quotes
+- hospitals
+- partner logos
+- countries deployed
+- user/adoption numbers
+- accuracy percentages
+- diagnoses/outcomes
+- lives saved
+
+Use:
+
+- verified product facts
+- primary research
+- clearly labelled illustrative scenarios
+- production-shaped empty proof/media slots
+
+---
+
+# 1. Final task sequence
+
+```text
+01 Green execution worktree
+02 Public facts + claim guardrails
+03 Central reduced-motion hook
+04 Complete media-slot registry + MediaFrame
+05 Signal Thread system
+06 Section theming + public nav/footer rebuild
+07 Custom LoopBand + GSAP NumberReveal
+08 Home Hero + Access thesis
+09 Home Proof field + Science teaser              → VISUAL GATE A
+10 Impact scenario data + StoryOverlay
+11 Home Context stories + Signal Journey          → VISUAL GATE B
+12 Home Signal band + Documentary media run
+13 Home Trust reset + Evidence + Language band
+14 Home Platform arc + Concrete value + Final CTA → VISUAL GATE C
+15 Remove superseded old Home compositions
+16 Expand public route tree
+17 Screenings capability atlas
+18 Science timeline/exhibition
+19 Impact story archive
+20 About mission/principles page
+21 Illustrative Journey case-study page
+22 Platform fragments-to-context page
+23 Privacy + Medical Disclaimer + 404             → VISUAL GATE D
+24 Public scroll restoration / continuity
+25 Responsive + keyboard + reduced-motion hardening
+26 Performance + bundle hardening
+27 Content/evidence/license cleanup
+28 Fresh final verification and handoff
+```
+
+---
+
+# Phase 0 — Establish a trustworthy baseline
+
+## Task 1: Create isolated redesign worktree from the last green code
+
+**Files changed:** none initially.
+
+- [ ] Create worktree:
 
 ```bash
 git worktree add ../vytal-reference-redesign -b landing-page-reference-redesign b444173f299f5e2022e53890363e77af877e5246
 cd ../vytal-reference-redesign
 ```
 
-- [ ] **Step 2: Confirm the accidental RED-only Screenings test is absent**
+- [ ] Confirm HEAD:
 
 ```bash
+git rev-parse HEAD
 git log -1 --oneline
-rg -n "define screenings page capability contract" . || true
 ```
 
-Expected: HEAD is `b444173...`; no RED-only Task-13 change is introduced.
+Expected: `b444173f...`.
 
-- [ ] **Step 3: Install and run baseline tests/build**
+- [ ] Install dependencies:
 
 ```bash
 npm install
+```
+
+- [ ] Run fresh baseline tests/build:
+
+```bash
 npm test
 npm run build
 ```
 
-Expected: all existing tests PASS and build exits 0 before redesign edits.
+Expected: zero failing tests, build exit 0.
 
-- [ ] **Step 4: Record baseline build chunk sizes in the implementation notes/PR body**
+- [ ] Record baseline Vite chunk output for comparison in **Task 26**.
 
-Capture Vite build lines for main/clinical/PublicSite JS/CSS. These values are used in Task 24 performance comparison.
+Record at least:
 
-- [ ] **Step 5: Commit docs only if the execution branch needs them**
+- shared/main JS
+- clinical route/main chunk
+- PublicSite JS
+- PublicSite CSS
+
+- [ ] Bring current design/plan docs into the execution branch without importing RED-only production changes.
+
+Preferred method: cherry-pick docs-only commits or copy only `docs/` paths.
+
+- [ ] Commit documentation if needed:
 
 ```bash
 git add docs/
-git commit -m "docs: add reference-driven redesign spec and plan"
+git commit -m "docs: add reference-driven redesign specification"
 ```
-
-Skip the commit if docs are already present with no changes.
 
 ---
 
-## Phase 1 — Truth/data/system foundation
+# Phase 1 — Truth and reusable public-system foundation
 
-### Task 2: Centralize public facts and add automated medical-claim guardrails
+## Task 2: Centralize verifiable public facts and add claim guardrails
 
-**Files:**
-- Create: `src/public/content/siteFacts.js`
-- Create: `tests/public/site-facts.test.js`
-- Create: `tests/public/content-claims.test.js`
-- Modify: `src/public/content/home.js`
+**Create:**
+- `src/public/content/siteFacts.js`
+- `tests/public/site-facts.test.js`
+- `tests/public/content-claims.test.js`
 
-**Interfaces:**
-- Consumes: `SUPPORTED_LANGUAGES` from `src/lib/ai.js`, `screenings` from `src/public/content/screenings.js`, existing trust factors from `home.js`.
-- Produces: `getSiteFacts(): { languageCount, coreScreeningCount, qualityFactorCount }`; automated claim scanner used for all later content.
+**Modify:**
+- `src/public/content/home.js`
 
-- [ ] **Step 1: Write the failing site-facts test**
+### RED
+
+Create `tests/public/site-facts.test.js` asserting:
 
 ```js
-// tests/public/site-facts.test.js
-import { describe, expect, it } from 'vitest'
-import { SUPPORTED_LANGUAGES } from '../../src/lib/ai.js'
-import { screenings } from '../../src/public/content/screenings.js'
-import { getSiteFacts } from '../../src/public/content/siteFacts.js'
-
-describe('public site facts', () => {
-  it('derives public numbers from canonical content instead of duplicate marketing literals', () => {
-    const facts = getSiteFacts()
-    expect(facts.languageCount).toBe(SUPPORTED_LANGUAGES.length)
-    expect(facts.coreScreeningCount).toBe(screenings.filter((item) => item.status === 'Core').length)
-    expect(facts.qualityFactorCount).toBe(4)
-  })
-})
+expect(getSiteFacts().languageCount).toBe(SUPPORTED_LANGUAGES.length)
+expect(getSiteFacts().coreScreeningCount)
+  .toBe(screenings.filter((item) => item.status === 'Core').length)
+expect(getSiteFacts().qualityFactorCount).toBe(4)
 ```
 
-- [ ] **Step 2: Run focused test and verify RED**
+Run:
 
 ```bash
 npx vitest run tests/public/site-facts.test.js
 ```
 
-Expected: FAIL because `siteFacts.js` does not exist.
+Expected: fail because `siteFacts.js` does not exist.
 
-- [ ] **Step 3: Implement `siteFacts.js`**
+### GREEN
+
+Implement:
 
 ```js
 import { SUPPORTED_LANGUAGES } from '../../lib/ai.js'
 import { screenings } from './screenings.js'
 
-const QUALITY_FACTORS = ['Motion', 'Lighting', 'Signal quality', 'Confidence']
+export const QUALITY_FACTORS = ['Motion', 'Lighting', 'Signal quality', 'Confidence']
 
 export function getSiteFacts() {
   return {
@@ -146,36 +267,24 @@ export function getSiteFacts() {
     qualityFactorCount: QUALITY_FACTORS.length,
   }
 }
-
-export { QUALITY_FACTORS }
 ```
 
-- [ ] **Step 4: Add claim-guard test**
+Create a limited claim scanner over public content using prohibited patterns such as:
 
 ```js
-// tests/public/content-claims.test.js
-import { describe, expect, it } from 'vitest'
-import { homeContent } from '../../src/public/content/home.js'
-import { screenings } from '../../src/public/content/screenings.js'
-
-const prohibited = [
-  /medical[- ]grade/i,
-  /replaces? (a |your )?doctor/i,
-  /replaces? (a |your )?cuff/i,
-  /replaces? (an |your )?ecg/i,
-  /diagnoses? (you|patients|disease)/i,
-  /used in \d+ countries/i,
-  /trusted by \d+/i,
-  /saves? lives/i,
-]
-
-it('does not contain unreviewed high-risk public claims', () => {
-  const text = JSON.stringify({ homeContent, screenings })
-  for (const pattern of prohibited) expect(text).not.toMatch(pattern)
-})
+/medical[- ]grade/i
+/replaces? (a |your )?doctor/i
+/replaces? (a |your )?cuff/i
+/replaces? (an |your )?ecg/i
+/diagnoses? (you|patients|disease)/i
+/used in \d+ countries/i
+/trusted by \d+/i
+/saves? lives/i
 ```
 
-- [ ] **Step 5: Run both tests, then full suite/build**
+Do not prohibit the word `diagnosis` itself because legitimate disclaimers say `not diagnosis`.
+
+Verify:
 
 ```bash
 npx vitest run tests/public/site-facts.test.js tests/public/content-claims.test.js
@@ -183,73 +292,104 @@ npm test
 npm run build
 ```
 
-Expected: PASS.
-
-- [ ] **Step 6: Commit**
+Commit:
 
 ```bash
-git add src/public/content/home.js src/public/content/siteFacts.js tests/public/site-facts.test.js tests/public/content-claims.test.js
+git add src/public/content tests/public/site-facts.test.js tests/public/content-claims.test.js
 git commit -m "feat(public-content): centralize facts and claim guardrails"
 ```
 
 ---
 
-### Task 3: Create canonical media-slot data and the production-shaped `MediaFrame`
+## Task 3: Centralize reduced-motion behavior before motion-aware primitives
 
-**Files:**
-- Create: `src/public/content/mediaSlots.js`
-- Create: `src/public/components/system/MediaFrame.jsx`
-- Create: `src/public/styles/media-frame.css`
-- Create: `tests/public/media-frame.test.jsx`
-- Modify: `src/public/PublicSite.jsx` or public style imports to include `media-frame.css`.
+**Create:**
+- `src/public/hooks/useReducedMotion.js`
+- `tests/public/reduced-motion.test.jsx`
 
-**Interfaces:**
-- Consumes: media manifest spec.
-- Produces: `mediaSlots` object and `<MediaFrame slot={...} />` used by every route.
+**Modify incrementally:**
+- existing public ReactBits adapters that currently create their own persistent reduced-motion listener.
 
-- [ ] **Step 1: Write RED tests for blank and real image states**
+### RED
 
-```jsx
-import { render, screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
-import MediaFrame from '../../src/public/components/system/MediaFrame.jsx'
+Test a probe component against mocked `window.matchMedia` with `matches: true` and `false`.
 
-const placeholder = {
-  id: 'TEST-SLOT',
-  kind: 'image',
-  ratio: '4 / 3',
-  src: null,
-  alt: '',
-  reveal: 'fade',
-  parallax: false,
-  priority: 'low',
-  status: 'placeholder',
-}
-
-it('preserves a production media slot when source is absent', () => {
-  const { container } = render(<MediaFrame slot={placeholder} />)
-  const frame = container.querySelector('[data-media-slot="TEST-SLOT"]')
-  expect(frame).toBeInTheDocument()
-  expect(frame).toHaveAttribute('data-media-status', 'placeholder')
-  expect(frame).not.toContainHTML('<img')
-  expect(frame).not.toContainHTML('<video')
-})
-
-it('renders an image when a slot has a source', () => {
-  render(<MediaFrame slot={{ ...placeholder, src: '/test.jpg', alt: 'Test media', status: 'final' }} />)
-  expect(screen.getByRole('img', { name: 'Test media' })).toHaveAttribute('src', '/test.jpg')
-})
-```
-
-- [ ] **Step 2: Verify RED**
+Run:
 
 ```bash
-npx vitest run tests/public/media-frame.test.jsx
+npx vitest run tests/public/reduced-motion.test.jsx
 ```
 
-- [ ] **Step 3: Create `mediaSlots.js` with all stable IDs from the media manifest**
+Expected: fail because hook does not exist.
 
-Use a helper to keep objects consistent:
+### GREEN
+
+Implement one hook that:
+
+- reads `(prefers-reduced-motion: reduce)`;
+- returns current boolean;
+- subscribes to `change`;
+- removes listener on unmount.
+
+Then migrate `Magnet`, `SplitText`, `ScrollReveal`, `CardSwap`, `PixelTransition` only where behavior remains equivalent.
+
+Verify:
+
+```bash
+npx vitest run tests/public/reduced-motion.test.jsx tests/public/reactbits-primitives.test.jsx
+npm test
+npm run build
+```
+
+Commit:
+
+```bash
+git add src/public/hooks src/public/components/reactbits tests/public/reduced-motion.test.jsx
+git commit -m "refactor(public-motion): centralize reduced-motion state"
+```
+
+---
+
+## Task 4: Implement the complete media-slot registry and production-shaped `MediaFrame`
+
+**Create:**
+- `src/public/content/mediaSlots.js`
+- `src/public/components/system/MediaFrame.jsx`
+- `src/public/styles/media-frame.css`
+- `tests/public/media-slots.test.js`
+- `tests/public/media-frame.test.jsx`
+
+**Modify:** public style import entry (`PublicSite.jsx` or current public style aggregator).
+
+### Required contract
+
+Every slot in `2026-08-18-vytal-media-slot-manifest.md` must exist immediately, even without assets.
+
+`tests/public/media-slots.test.js` must contain the complete required ID array from `2026-08-18-vytal-reference-redesign-architecture.md` and assert every ID exists in `mediaSlots`.
+
+This includes all Home, Screenings, Science, Impact, About, Journey and Platform slots—not a partial starter set.
+
+### RED
+
+`media-frame.test.jsx` asserts:
+
+- placeholder emits `data-media-slot`;
+- placeholder emits `data-media-status="placeholder"`;
+- no `<img>`/`<video>` exists when source is null;
+- real image source renders correct alt/src;
+- ratio data/style remains present.
+
+Run:
+
+```bash
+npx vitest run tests/public/media-slots.test.js tests/public/media-frame.test.jsx
+```
+
+Expected: fail.
+
+### GREEN
+
+Implement a canonical slot helper:
 
 ```js
 const slot = (id, kind, ratio, desiredContent, extra = {}) => ({
@@ -269,324 +409,143 @@ const slot = (id, kind, ratio, desiredContent, extra = {}) => ({
   rights: 'pending',
   ...extra,
 })
-
-export const mediaSlots = {
-  HOME_HERO_01: slot('HOME-HERO-01', 'video', 'viewport', 'Human/device camera-screening moment', { priority: 'high', reveal: 'wipe-signal' }),
-  HOME_ACCESS_DETAIL_01: slot('HOME-ACCESS-DETAIL-01', 'image', '3 / 4', 'Hand/device/environment detail'),
-  HOME_ACCESS_MAP_01: slot('HOME-ACCESS-MAP-01', 'diagram', '16 / 9', 'Original access/reach field'),
-  // Continue with every exact slot ID from the committed media-slot manifest.
-}
 ```
 
-The implementation must include the complete manifest, not just the three shown above. Copy exact IDs/ratios/purpose from `2026-08-18-vytal-media-slot-manifest.md`.
+`MediaFrame` uses `useReducedMotion()` from Task 3 and:
 
-- [ ] **Step 4: Implement `MediaFrame.jsx`**
+- preserves aspect ratio when empty;
+- renders a quiet neutral surface, not shimmer;
+- renders image/video when source exists;
+- disables parallax/auto-motion under reduced motion;
+- uses eager/high priority only for hero media;
+- emits stable slot/status data attributes.
 
-```jsx
-import useReducedMotion from '../../hooks/useReducedMotion.js'
-
-export default function MediaFrame({ slot, src, poster, alt, className = '' }) {
-  const reducedMotion = useReducedMotion()
-  const mediaSrc = src ?? slot.src
-  const mediaPoster = poster ?? slot.poster
-  const mediaAlt = alt ?? slot.alt ?? ''
-  const classes = ['media-frame', `media-frame--${slot.kind}`, `media-frame--reveal-${slot.reveal}`, className]
-    .filter(Boolean)
-    .join(' ')
-
-  return (
-    <figure
-      className={classes}
-      data-media-slot={slot.id}
-      data-media-status={mediaSrc ? (slot.status === 'placeholder' ? 'candidate' : slot.status) : 'placeholder'}
-      data-media-parallax={slot.parallax && !reducedMotion ? 'enabled' : 'disabled'}
-      style={{ '--media-ratio': slot.ratio, '--media-position': slot.objectPosition }}
-    >
-      <div className="media-frame__surface">
-        {slot.kind === 'video' && mediaSrc ? (
-          <video src={mediaSrc} poster={mediaPoster || undefined} muted playsInline loop={!reducedMotion} autoPlay={!reducedMotion} />
-        ) : mediaSrc ? (
-          <img
-            src={mediaSrc}
-            alt={mediaAlt}
-            loading={slot.priority === 'high' ? 'eager' : 'lazy'}
-            decoding="async"
-          />
-        ) : (
-          <div className="media-frame__placeholder" aria-hidden="true" />
-        )}
-      </div>
-      {slot.caption ? <figcaption>{slot.caption}</figcaption> : null}
-    </figure>
-  )
-}
-```
-
-If Task 4 has not yet created `useReducedMotion`, initially pass a simple `reducedMotion` prop or create Task 4 first in execution. Preferred execution order is Task 4 before Step 4 if strict imports require it; do not duplicate the hook logic.
-
-- [ ] **Step 5: Add CSS**
-
-```css
-.media-frame {
-  --media-ratio: 4 / 3;
-  --media-position: 50% 50%;
-  margin: 0;
-  min-width: 0;
-}
-.media-frame__surface {
-  position: relative;
-  overflow: hidden;
-  aspect-ratio: var(--media-ratio);
-  background: linear-gradient(135deg, rgba(255,255,255,.035), rgba(255,255,255,.01));
-}
-.media-frame__surface > img,
-.media-frame__surface > video {
-  width: 100%; height: 100%; display: block; object-fit: cover; object-position: var(--media-position);
-}
-.media-frame__placeholder { width: 100%; height: 100%; background: rgba(241,237,231,.035); }
-.media-frame[data-media-status='placeholder'] .media-frame__surface { outline: 1px solid rgba(241,237,231,.1); outline-offset: -1px; }
-```
-
-- [ ] **Step 6: GREEN/full verification and commit**
+Verify:
 
 ```bash
-npx vitest run tests/public/media-frame.test.jsx
+npx vitest run tests/public/media-slots.test.js tests/public/media-frame.test.jsx
 npm test
 npm run build
-git add src/public/content/mediaSlots.js src/public/components/system/MediaFrame.jsx src/public/styles/media-frame.css tests/public/media-frame.test.jsx src/public/PublicSite.jsx
-git commit -m "feat(public-system): add production media slots"
+```
+
+Commit:
+
+```bash
+git add src/public/content/mediaSlots.js src/public/components/system/MediaFrame.jsx src/public/styles/media-frame.css tests/public/media-slots.test.js tests/public/media-frame.test.jsx
+git commit -m "feat(public-system): add production media placeholders"
 ```
 
 ---
 
-### Task 4: Centralize reduced-motion behavior
+## Task 5: Build the deterministic Vytal Signal Thread system
 
-**Files:**
-- Create: `src/public/hooks/useReducedMotion.js`
-- Create: `tests/public/reduced-motion.test.jsx`
-- Modify: existing public ReactBits adapters that currently create their own long-lived reduced-motion query where practical.
+**Create:**
+- `src/public/components/system/SignalThread.jsx`
+- `SignalMarker.jsx`
+- `SpectralSamples.jsx`
+- `RoiFrame.jsx`
+- `src/public/styles/signal-thread.css`
+- `tests/public/signal-thread.test.jsx`
 
-**Interfaces:**
-- Produces: `useReducedMotion(): boolean`.
+### States
 
-- [ ] **Step 1: Write failing hook consumer test**
+- `raw`
+- `lock`
+- `trusted`
+- `context`
+- `timeline`
+- `network`
+- `divider`
 
-```jsx
-function Probe() {
-  const reduced = useReducedMotion()
-  return <span>{reduced ? 'reduce' : 'motion'}</span>
-}
+Tones:
 
-it('reads the reduced-motion media query', () => {
-  window.matchMedia = vi.fn().mockImplementation(() => ({
-    matches: true,
-    addEventListener: vi.fn(),
-    removeEventListener: vi.fn(),
-  }))
-  render(<Probe />)
-  expect(screen.getByText('reduce')).toBeInTheDocument()
-})
-```
+- coral
+- amber
+- mint
+- ivory
+- ink
 
-- [ ] **Step 2: Verify RED**
+### RED
 
-```bash
-npx vitest run tests/public/reduced-motion.test.jsx
-```
-
-- [ ] **Step 3: Implement hook**
+Assert:
 
 ```js
-import { useEffect, useState } from 'react'
-
-const QUERY = '(prefers-reduced-motion: reduce)'
-
-export default function useReducedMotion() {
-  const [reduced, setReduced] = useState(() => window.matchMedia?.(QUERY)?.matches ?? false)
-
-  useEffect(() => {
-    const media = window.matchMedia?.(QUERY)
-    if (!media) return undefined
-    const update = (event) => setReduced(event.matches)
-    setReduced(media.matches)
-    media.addEventListener?.('change', update)
-    return () => media.removeEventListener?.('change', update)
-  }, [])
-
-  return reduced
-}
+[data-signal-thread]
+data-signal-variant="raw"
+aria-hidden="true" // when decorative
 ```
 
-- [ ] **Step 4: Migrate public components incrementally**
+Rerender trusted variant and assert state changes.
 
-Replace duplicate reduced-motion query logic in `Magnet`, `SplitText`, `ScrollReveal`, `CardSwap`, `PixelTransition` only where behavior remains equivalent. Do not rewrite working component internals beyond the media-query ownership change.
+### GREEN
 
-- [ ] **Step 5: Verify and commit**
+Use deterministic fixed sample coordinates—never `Math.random()`.
 
-```bash
-npx vitest run tests/public/reduced-motion.test.jsx tests/public/reactbits-primitives.test.jsx
-npm test
-npm run build
-git add src/public/hooks/useReducedMotion.js src/public/components/reactbits tests/public/reduced-motion.test.jsx
-git commit -m "refactor(public-motion): centralize reduced-motion state"
-```
+Use SVG path/stroke + small DOM/SVG sample points. The path must not look like a literal ECG trace.
 
----
+Under reduced motion, render final semantic state immediately.
 
-### Task 5: Build the deterministic Signal Thread primitives
-
-**Files:**
-- Create: `src/public/components/system/SignalThread.jsx`
-- Create: `src/public/components/system/SignalMarker.jsx`
-- Create: `src/public/components/system/SpectralSamples.jsx`
-- Create: `src/public/components/system/RoiFrame.jsx`
-- Create: `src/public/styles/signal-thread.css`
-- Create: `tests/public/signal-thread.test.jsx`
-
-**Interfaces:**
-- Produces the exact component family documented in architecture spec.
-
-- [ ] **Step 1: Write RED contract test**
-
-```jsx
-it('renders semantic Signal Thread states deterministically', () => {
-  const { rerender, container } = render(<SignalThread variant="raw" tone="coral" decorative />)
-  const thread = container.querySelector('[data-signal-thread]')
-  expect(thread).toHaveAttribute('data-signal-variant', 'raw')
-  expect(thread).toHaveAttribute('aria-hidden', 'true')
-
-  rerender(<SignalThread variant="trusted" tone="mint" decorative />)
-  expect(container.querySelector('[data-signal-thread]')).toHaveAttribute('data-signal-variant', 'trusted')
-})
-```
-
-- [ ] **Step 2: Verify RED**
-
-```bash
-npx vitest run tests/public/signal-thread.test.jsx
-```
-
-- [ ] **Step 3: Implement deterministic samples**
-
-```js
-const DEFAULT_SAMPLES = [
-  [8, 18], [17, 61], [29, 37], [41, 74], [53, 28], [66, 52], [79, 20], [90, 68],
-]
-```
-
-`SpectralSamples` renders this fixed data; no `Math.random()`.
-
-- [ ] **Step 4: Implement `SignalThread` as SVG/state wrapper**
-
-```jsx
-export default function SignalThread({
-  variant = 'raw', tone = 'coral', direction = 'horizontal', progress,
-  density = 'normal', decorative = true, className = '',
-}) {
-  const reducedMotion = useReducedMotion()
-  const safeProgress = reducedMotion ? 1 : progress
-  return (
-    <div
-      className={`signal-thread signal-thread--${variant} signal-thread--${tone} ${className}`}
-      data-signal-thread="true"
-      data-signal-variant={variant}
-      data-signal-direction={direction}
-      data-signal-density={density}
-      aria-hidden={decorative ? 'true' : undefined}
-      style={safeProgress == null ? undefined : { '--signal-progress': safeProgress }}
-    >
-      {variant === 'raw' ? <SpectralSamples /> : null}
-      <svg viewBox="0 0 1000 120" preserveAspectRatio="none" focusable="false">
-        <path className="signal-thread__ghost" d="M0 60 C120 55 160 70 260 58 S430 48 520 62 S700 68 1000 58" />
-        <path className="signal-thread__path" d="M0 60 C120 55 160 70 260 58 S430 48 520 62 S700 68 1000 58" />
-      </svg>
-    </div>
-  )
-}
-```
-
-Different variants are primarily styled/composed rather than creating an ECG waveform.
-
-- [ ] **Step 5: Add CSS state semantics and reduced-motion final state**
-
-Use coral/noisy RAW, amber LOCK, mint TRUSTED, and neutral CONTEXT/timeline/network. Keep continuous filters off.
-
-- [ ] **Step 6: Verify and commit**
+Verify:
 
 ```bash
 npx vitest run tests/public/signal-thread.test.jsx
 npm test
 npm run build
+```
+
+Commit:
+
+```bash
 git add src/public/components/system src/public/styles/signal-thread.css tests/public/signal-thread.test.jsx
 git commit -m "feat(public-system): add Vytal Signal Thread"
 ```
 
 ---
 
-### Task 6: Build section-theme observation and redesign the public shell
+## Task 6: Add section themes and rebuild public nav/footer into editorial shell
 
-**Files:**
-- Create: `src/public/components/system/SectionThemeBoundary.jsx`
-- Create: `src/public/hooks/useSectionTheme.js`
-- Modify: `src/public/components/PublicNav.jsx`
-- Modify: `src/public/components/PublicFooter.jsx`
-- Modify: `src/public/PublicLayout.jsx`
-- Modify: `src/public/styles/public-layout.css` or split current public CSS accordingly.
-- Create: `tests/public/public-nav-theme.test.jsx`
+**Create:**
+- `src/public/components/system/SectionThemeBoundary.jsx`
+- `src/public/hooks/useSectionTheme.js`
+- `tests/public/public-nav-theme.test.jsx`
 
-**Interfaces:**
-- Produces section-aware nav theme and editorial mobile menu.
+**Modify:**
+- `PublicNav.jsx`
+- `PublicFooter.jsx`
+- `PublicLayout.jsx`
+- public layout CSS
 
-- [ ] **Step 1: Write RED theme-boundary/nav test**
+### Requirements
 
-```jsx
-it('exposes section themes and keeps the primary screening action', () => {
-  render(
-    <MemoryRouter>
-      <PublicLayout />
-    </MemoryRouter>,
-  )
-  expect(screen.getByRole('link', { name: /start screening/i })).toHaveAttribute('href', '/scan')
-})
+Desktop nav:
 
-it('renders semantic theme boundaries', () => {
-  const { container } = render(<SectionThemeBoundary theme="light">Trust</SectionThemeBoundary>)
-  expect(container.querySelector('[data-public-theme="light"]')).toBeInTheDocument()
-})
-```
+- fixed transparent over hero;
+- no permanent SaaS pill container;
+- Vytal left;
+- Screenings / Science / Impact / About;
+- Start Screening distinct;
+- transitions text/logo treatment over dark/light/coral/media sections;
+- after scroll may gain subtle blur/background, not oversized card shell.
 
-- [ ] **Step 2: Implement boundary and observer**
+Mobile:
 
-Boundary:
+- full-screen/near-full-screen editorial menu;
+- body scroll lock;
+- Escape closes;
+- focus-safe;
+- Start Screening visible.
 
-```jsx
-export default function SectionThemeBoundary({ as: Tag = 'section', theme = 'dark', children, ...props }) {
-  return <Tag data-public-theme={theme} {...props}>{children}</Tag>
-}
-```
+Footer:
 
-`useSectionTheme` uses one `IntersectionObserver` with a narrow rootMargin band near nav height; it selects the most recently intersecting boundary.
+- mission statement;
+- routes;
+- Start Screening;
+- Privacy;
+- Medical Disclaimer;
+- `Screening support, not diagnosis.`;
+- no fake social/newsletter links.
 
-- [ ] **Step 3: Rebuild nav**
-
-Required DOM/classes:
-
-```jsx
-<header className={`public-nav public-nav--${theme} ${scrolled ? 'is-scrolled' : ''}`}>
-  <Link className="public-nav__brand" to="/">Vytal</Link>
-  <nav aria-label="Primary">...</nav>
-  <Link className="public-nav__cta" to="/scan">Start Screening</Link>
-  <button className="public-nav__menu-toggle" aria-expanded={menuOpen}>...</button>
-</header>
-```
-
-Desktop is transparent/editorial; mobile menu becomes full-screen panel, locks body scroll, closes on Escape.
-
-- [ ] **Step 4: Rebuild footer**
-
-Footer includes mission, public nav, Start Screening, Privacy, Medical Disclaimer, and `Screening support, not diagnosis.` No fake socials/newsletter.
-
-- [ ] **Step 5: Verify**
+### Verification
 
 ```bash
 npx vitest run tests/public/public-nav.test.jsx tests/public/public-nav-theme.test.jsx
@@ -594,109 +553,121 @@ npm test
 npm run build
 ```
 
-- [ ] **Step 6: Commit**
+Commit:
 
 ```bash
-git add src/public/PublicLayout.jsx src/public/components/PublicNav.jsx src/public/components/PublicFooter.jsx src/public/components/system/SectionThemeBoundary.jsx src/public/hooks/useSectionTheme.js src/public/styles/public-layout.css tests/public/public-nav-theme.test.jsx
-git commit -m "feat(public-shell): add editorial themed navigation"
+git add src/public/PublicLayout.jsx src/public/components/PublicNav.jsx src/public/components/PublicFooter.jsx src/public/components/system/SectionThemeBoundary.jsx src/public/hooks/useSectionTheme.js src/public/styles tests/public/public-nav-theme.test.jsx
+git commit -m "feat(public-shell): build editorial themed navigation"
 ```
 
 ---
 
-### Task 7: Prototype and choose the moving-band/count primitives
+## Task 7: Build custom GSAP `LoopBand` and `NumberReveal`
 
-**Files:**
-- Create: `src/public/components/system/LoopBand.jsx`
-- Create: `src/public/components/system/VisuallyHiddenList.jsx`
-- Optionally create/adapt: `src/public/components/reactbits/ScrollVelocity.jsx`
-- Optionally create/adapt: `src/public/components/reactbits/CountUp.jsx`
-- Create: `tests/public/loop-band.test.jsx`
-- Modify: `THIRD_PARTY_NOTICES.md` only if new ReactBits source is retained.
+**Create:**
+- `src/public/components/system/LoopBand.jsx`
+- `VisuallyHiddenList.jsx`
+- `NumberReveal.jsx`
+- associated CSS
+- `tests/public/loop-band.test.jsx`
+- `tests/public/number-reveal.test.jsx`
 
-**Interfaces:**
-- Produces accessible `<LoopBand />`; optionally a CountUp wrapper.
+### Locked decision
 
-- [ ] **Step 1: Inspect current ReactBits Scroll Velocity and Count Up source/dependencies before copying**
+Do not copy ReactBits Scroll Velocity or Count Up because both currently depend on Motion. Recreate only the useful interaction grammar with existing GSAP/CSS.
 
-Record whether each uses only already-present GSAP/native APIs or adds a new runtime. Reject any implementation that violates Global Constraints.
-
-- [ ] **Step 2: Write RED LoopBand accessibility test**
+### LoopBand contract
 
 ```jsx
-it('exposes one semantic list while hiding duplicated moving tracks', () => {
-  const { container } = render(<LoopBand items={['Heart rate', 'Breathing']} ariaLabel="Signals" />)
-  expect(screen.getByRole('list', { name: 'Signals' })).toBeInTheDocument()
-  expect(within(screen.getByRole('list', { name: 'Signals' })).getAllByRole('listitem')).toHaveLength(2)
-  expect(container.querySelectorAll('[data-loop-track][aria-hidden="true"]').length).toBeGreaterThan(0)
-})
+<LoopBand
+  items={items}
+  direction="left"
+  speed={0.8}
+  ariaLabel="Vytal screening areas"
+  renderItem={(item) => <span>{item.label}</span>}
+/>
 ```
 
-- [ ] **Step 3: Implement LoopBand using the winning engine**
+Accessibility:
 
-Required public API:
+- exactly one semantic list for assistive tech;
+- visual duplicate tracks `aria-hidden="true"`;
+- no repeated AT reading;
+- reduced motion renders static wrapped/scrollable sequence.
 
-```jsx
-<LoopBand items={items} direction="left" speed={0.8} ariaLabel="Signals" renderItem={(item) => ...} />
-```
+Implementation:
 
-If ReactBits Scroll Velocity requires another motion runtime, use a GSAP/CSS track instead.
+- measure one visual sequence with `ResizeObserver`;
+- GSAP moves a track continuously;
+- duplicate only enough content to cover seam;
+- pause/stop under reduced motion;
+- cleanup tween and observer.
 
-- [ ] **Step 4: Add CountUp only if dependency-light**
+### NumberReveal
 
-If retained, it must render the final numeric text server/DOM-side and animate enhancement only; reduced motion returns final value immediately.
+Small GSAP enhancement:
 
-- [ ] **Step 5: Verify build impact and commit**
+- DOM contains final numeric value for fallback/accessibility;
+- on first viewport entry animate an object value from start to end with GSAP;
+- update text using formatter;
+- reduced motion immediately shows final value;
+- animate once.
+
+### Verify
 
 ```bash
-npx vitest run tests/public/loop-band.test.jsx
+npx vitest run tests/public/loop-band.test.jsx tests/public/number-reveal.test.jsx
 npm test
 npm run build
-git add src/public/components/system src/public/components/reactbits THIRD_PARTY_NOTICES.md tests/public/loop-band.test.jsx
-git commit -m "feat(public-system): add accessible semantic motion bands"
+```
+
+Commit:
+
+```bash
+git add src/public/components/system src/public/styles tests/public/loop-band.test.jsx tests/public/number-reveal.test.jsx
+git commit -m "feat(public-system): add semantic motion bands and facts"
 ```
 
 ---
 
-## Phase 2 — Home, Gate A
+# Phase 2 — Home: Gate A
 
-### Task 8: Implement cinematic media Hero and access thesis
+## Task 8: Rebuild Home opening as cinematic Hero + sparse Access thesis
 
-**Files:**
-- Create: `src/public/components/home-reference/HeroMediaChapter.jsx`
-- Create: `src/public/components/home-reference/AccessThesisChapter.jsx`
-- Modify: `src/public/content/home.js`
-- Create/Modify: `src/public/styles/home-reference.css`
-- Modify: `src/public/pages/LandingPage.jsx`
-- Create: `tests/public/home-reference-structure.test.jsx`
+**Create:**
+- `home-reference/HeroMediaChapter.jsx`
+- `home-reference/AccessThesisChapter.jsx`
+- `src/public/styles/home-reference.css`
+- `tests/public/home-reference-structure.test.jsx`
 
-**Interfaces:**
-- Consumes `MediaFrame`, `SignalThread`, `SectionThemeBoundary`, `SplitText`, home content.
-- Produces Home chapters `hero`, `access-thesis`.
+**Modify:**
+- `LandingPage.jsx`
+- `home.js`
 
-- [ ] **Step 1: Write RED test for first two chapter contracts**
+### Hero
 
-```jsx
-it('opens with cinematic mystery then access thesis', () => {
-  const { container } = render(<MemoryRouter><LandingPage /></MemoryRouter>)
-  expect(container.querySelector('[data-home-chapter="hero"]')).toBeInTheDocument()
-  expect(container.querySelector('[data-home-chapter="access-thesis"]')).toBeInTheDocument()
-  expect(container.querySelector('[data-media-slot="HOME-HERO-01"]')).toBeInTheDocument()
-  expect(screen.getByRole('heading', { level: 1, name: /more here than you can see/i })).toBeInTheDocument()
-  expect(screen.getByText(/useful first health signal/i)).toBeInTheDocument()
-})
-```
+Use:
 
-- [ ] **Step 2: Verify RED**
+- `HOME-HERO-01` full-viewport MediaFrame;
+- `SignalThread variant="raw"`;
+- intrigue copy `There’s more here than you can see.`;
+- secondary `Your camera sees it.`;
+- small scroll cue;
+- no large feature paragraph above fold.
 
-- [ ] **Step 3: Implement exact structures from Home Execution Details sections 2.1–2.2**
+### Access thesis
 
-Use `data-home-chapter` attributes and full-viewport `MediaFrame`. Remove the old Hero import only after the replacement renders.
+Large sparse statement:
 
-- [ ] **Step 4: CSS**
+`A useful first health signal should not have to wait for perfect access.`
 
-Hero: `min-height: 100svh`, full bleed media absolute inset 0, content layered above, title `clamp(4rem,10vw,10rem)`, sparse access chapter with no card root.
+No card grid.
 
-- [ ] **Step 5: Verify focused/full/build**
+### RED/GREEN
+
+Test required chapter attributes and hero media slot.
+
+Verify:
 
 ```bash
 npx vitest run tests/public/home-reference-structure.test.jsx tests/public/landing-page.test.jsx
@@ -704,9 +675,7 @@ npm test
 npm run build
 ```
 
-Update old landing-page assertions only when they assumed removed visual structure; preserve semantic assertions like Start Screening and screening-not-diagnosis.
-
-- [ ] **Step 6: Commit**
+Commit:
 
 ```bash
 git add src/public/components/home-reference src/public/pages/LandingPage.jsx src/public/content/home.js src/public/styles/home-reference.css tests/public
@@ -715,88 +684,46 @@ git commit -m "feat(home): rebuild cinematic opening chapters"
 
 ---
 
-### Task 9: Implement verified proof field and sourced science teaser
+## Task 9: Add verified Proof field and sourced Science lineage teaser
 
-**Files:**
-- Create: `src/public/components/home-reference/ProofFieldChapter.jsx`
-- Create: `src/public/components/home-reference/ScienceLineageChapter.jsx`
-- Create: `src/public/content/science.js`
-- Modify: `src/public/pages/LandingPage.jsx`
-- Modify: `src/public/styles/home-reference.css`
-- Modify: `tests/public/home-reference-structure.test.jsx`
+**Create:**
+- `ProofFieldChapter.jsx`
+- `ScienceLineageChapter.jsx`
+- `src/public/content/science.js`
 
-**Interfaces:**
-- Consumes `getSiteFacts`, media slots, SignalThread.
-- Produces initial verified `scienceMilestones` and Home subset.
+**Modify:** Home page/style/test.
 
-- [ ] **Step 1: Add RED expectations for chapters `proof` and `science-lineage`**
+### Proof field
 
-```js
-expect(chapters.slice(0, 4)).toEqual(['hero', 'access-thesis', 'proof', 'science-lineage'])
-expect(screen.getByText(/designed for reach/i)).toBeInTheDocument()
-expect(screen.getByRole('link', { name: /explore the science/i })).toHaveAttribute('href', '/science')
-```
+Use only derived facts:
 
-- [ ] **Step 2: Create exact initial Science milestones**
+- supported language count;
+- core screening count;
+- quality-factor count;
+- one ordinary-camera concept as editorial copy.
 
-```js
-export const scienceMilestones = [
-  {
-    id: 'ambient-rppg', year: '2008', weight: 'feature',
-    title: 'Ambient light becomes a remote pulse signal',
-    body: 'Verkruysse, Svaasand and Nelson demonstrated remote plethysmographic imaging using ambient light and a consumer camera.',
-    citation: { label: 'Verkruysse et al., Optics Express (2008)', url: 'https://opg.optica.org/oe/fulltext.cfm?uri=oe-16-26-21434', sourceType: 'primary' },
-    mediaSlotId: 'SCI-TIMELINE-RPPG-01',
-  },
-  {
-    id: 'video-bss', year: '2010', weight: 'major',
-    title: 'Automated pulse measurement from video',
-    body: 'Poh, McDuff and Picard described non-contact automated cardiac pulse measurements using video imaging and blind source separation.',
-    citation: { label: 'Poh et al., Optics Express (2010)', url: 'https://opg.optica.org/oe/fulltext.cfm?uri=oe-18-10-10762', sourceType: 'primary' },
-    mediaSlotId: 'SCI-TIMELINE-PPG-01',
-  },
-  {
-    id: 'chrom', year: '2013', weight: 'major',
-    title: 'Chrominance improves motion robustness',
-    body: 'De Haan and Jeanne introduced a chrominance-based rPPG approach designed around the motion problem in RGB video.',
-    citation: { label: 'de Haan & Jeanne, IEEE TBME (2013)', url: 'https://doi.org/10.1109/TBME.2013.2266196', sourceType: 'primary' },
-    mediaSlotId: 'SCI-TIMELINE-MOTION-01',
-  },
-  {
-    id: 'motion-mapping', year: '2016', weight: 'minor',
-    title: 'Motion artifacts become an explicit imaging problem',
-    body: 'Moço, Stuijk and de Haan analyzed motion-related artifacts in PPG imaging and color-channel mapping approaches.',
-    citation: { label: 'Moço et al., Biomedical Optics Express (2016)', url: 'https://doi.org/10.1364/BOE.7.001737', sourceType: 'primary' },
-    mediaSlotId: 'SCI-TIMELINE-MOTION-01',
-  },
-  {
-    id: 'principles', year: '2017', weight: 'feature',
-    title: 'Remote PPG gets an explicit optical/algorithmic model',
-    body: 'Wang and colleagues described algorithmic principles that connect skin optics, color signals and pulse extraction choices.',
-    citation: { label: 'Wang et al., IEEE TBME (2017)', url: 'https://doi.org/10.1109/TBME.2016.2609282', sourceType: 'primary' },
-    mediaSlotId: 'SCI-TIMELINE-ROI-01',
-  },
-  {
-    id: 'hrv-realtime', year: '2019', weight: 'feature',
-    title: 'Real-time camera pulse timing extends toward variability',
-    body: 'Gudi and colleagues presented a real-time rPPG pipeline that extracts a pulse waveform for heart rate and beat-timing/HRV analysis.',
-    citation: { label: 'Gudi et al., ICCV Workshops (2019)', url: 'https://openaccess.thecvf.com/content_ICCVW_2019/html/CVPM/Gudi_Efficient_Real-Time_Camera_Based_Estimation_of_Heart_Rate_and_Its_ICCVW_2019_paper.html', sourceType: 'primary' },
-    mediaSlotId: 'SCI-TIMELINE-IBI-01',
-  },
-]
-```
+Any world/access visual says:
 
-Add a separate `vytalPrototypeMilestone` labelled `2026 / Vytal prototype` with `sourceType: 'internal'`; do not present it as published research.
+`Designed for reach — not a deployment map.`
 
-- [ ] **Step 3: Implement ProofField from derived facts**
+Use custom `NumberReveal` from Task 7.
 
-Render `languageCount`, `coreScreeningCount`, `qualityFactorCount`; include access-map slot and explicit non-deployment label.
+### Science milestones
 
-- [ ] **Step 4: Implement Science teaser using first/selected milestones**
+Initial verified research timeline:
 
-Render 4–5 milestones with Signal Thread timeline and CTA.
+- **2008** Verkruysse, Svaasand & Nelson — remote plethysmographic imaging under ambient light / consumer camera. Primary URL: `https://opg.optica.org/oe/fulltext.cfm?uri=oe-16-26-21434`
+- **2010** Poh, McDuff & Picard — non-contact automated pulse measurement from video with blind source separation. URL: `https://opg.optica.org/oe/fulltext.cfm?uri=oe-18-10-10762`
+- **2013** de Haan & Jeanne — chrominance-based robust rPPG. URL: `https://doi.org/10.1109/TBME.2013.2266196`
+- **2016** Moço, Stuijk & de Haan — motion-robust PPG imaging/color mapping. URL: `https://doi.org/10.1364/BOE.7.001737`
+- **2017** Wang et al. — algorithmic principles of remote PPG. URL: `https://doi.org/10.1109/TBME.2016.2609282`
+- **2019** Gudi et al. — efficient real-time camera heart-rate and variability estimation. URL: `https://openaccess.thecvf.com/content_ICCVW_2019/html/CVPM/Gudi_Efficient_Real-Time_Camera_Based_Estimation_of_Heart_Rate_and_Its_ICCVW_2019_paper.html`
 
-- [ ] **Step 5: Full verification**
+Add **2026 / Vytal prototype** as a separate internal milestone with `sourceType: 'internal'`; do not imply peer-reviewed publication.
+
+Home shows a compact selected subset; `/science` later shows full exhibition.
+
+### Verify
 
 ```bash
 npx vitest run tests/public/home-reference-structure.test.jsx tests/public/site-facts.test.js
@@ -804,985 +731,594 @@ npm test
 npm run build
 ```
 
-- [ ] **Step 6: Commit**
+Commit, then perform **VISUAL GATE A** from QA companion at 390 / 768 / 1440 / 1920.
 
-```bash
-git add src/public/components/home-reference/ProofFieldChapter.jsx src/public/components/home-reference/ScienceLineageChapter.jsx src/public/content/science.js src/public/pages/LandingPage.jsx src/public/styles/home-reference.css tests/public/home-reference-structure.test.jsx
-git commit -m "feat(home): add verified proof and science lineage"
-```
-
-- [ ] **Step 7: VISUAL GATE A**
-
-Perform the exact Gate A checklist in `2026-08-18-vytal-reference-qa-performance.md`. Do not continue visual layering until shell/Hero/access/proof grammar is acceptable.
+Do not proceed if hero/shell/proof grammar still feels like a normal SaaS landing page.
 
 ---
 
-## Phase 3 — Home, Gate B
+# Phase 3 — Home: Gate B
 
-### Task 10: Build accessible StoryOverlay and Impact scenario data
+## Task 10: Create six illustrative Impact scenarios and reusable accessible StoryOverlay
 
-**Files:**
-- Create: `src/public/content/impact.js`
-- Create: `src/public/components/system/StoryOverlay.jsx`
-- Create: `tests/public/story-overlay.test.jsx`
-- Modify: `src/public/styles/public-motion.css` / layout CSS as needed.
+**Create:**
+- `src/public/content/impact.js`
+- `src/public/components/system/StoryOverlay.jsx`
+- `tests/public/story-overlay.test.jsx`
 
-**Interfaces:**
-- Produces `impactScenarios` and `<StoryOverlay />` for Home and `/impact`.
+Scenario IDs:
 
-- [ ] **Step 1: Write RED overlay test using `fireEvent` to avoid new test dependency**
+1. `individual-home`
+2. `community-health-worker`
+3. `low-connectivity`
+4. `multilingual-explanation`
+5. `longitudinal-follow-up`
+6. `referral-continuity`
 
-```jsx
-it('opens as a dialog, closes on Escape and returns focus', () => {
-  function Harness() {
-    const [open, setOpen] = useState(false)
-    return <><button onClick={() => setOpen(true)}>Open story</button><StoryOverlay open={open} scenario={impactScenarios[0]} onClose={() => setOpen(false)} /></>
-  }
-  render(<Harness />)
-  const trigger = screen.getByRole('button', { name: 'Open story' })
-  fireEvent.click(trigger)
-  expect(screen.getByRole('dialog')).toBeInTheDocument()
-  fireEvent.keyDown(document, { key: 'Escape' })
-  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-  expect(trigger).toHaveFocus()
-})
-```
+Every scenario:
 
-- [ ] **Step 2: Create the six exact illustrative scenarios**
+- `label: 'Illustrative scenario'`
+- `isIllustrative: true`
+- no person name
+- no fake diagnosis/outcome/quote
+- 3 media slot IDs
+- context, friction, workflow, limitation.
 
-IDs and media IDs come from supporting-route plan. Every object includes `isIllustrative: true` and label `Illustrative scenario`.
+Overlay requirements:
 
-- [ ] **Step 3: Implement dialog semantics/focus**
+- `role="dialog"`;
+- focus trap;
+- Escape close;
+- body scroll lock;
+- focus returns to originating trigger;
+- prev/next support;
+- full-screen sheet mobile.
 
-Use refs and a small focusable-selector query; save `document.activeElement` on open, restore on close. Lock `document.body.style.overflow = 'hidden'` while open and restore prior value.
-
-- [ ] **Step 4: Verify and commit**
-
-```bash
-npx vitest run tests/public/story-overlay.test.jsx
-npm test
-npm run build
-git add src/public/content/impact.js src/public/components/system/StoryOverlay.jsx src/public/styles tests/public/story-overlay.test.jsx
-git commit -m "feat(public-system): add illustrative story overlays"
-```
+Verify focused test/full suite/build. Commit.
 
 ---
 
-### Task 11: Implement Home context stories and four-beat Signal Journey
+## Task 11: Build Home Context stories + four-beat Signal Journey
 
-**Files:**
-- Create: `src/public/components/home-reference/ContextStoriesChapter.jsx`
-- Create: `src/public/components/home-reference/SignalJourneyChapter.jsx`
-- Modify: `src/public/pages/LandingPage.jsx`
-- Modify: `src/public/styles/home-reference.css`
-- Modify: `tests/public/home-reference-structure.test.jsx`
+**Create:**
+- `ContextStoriesChapter.jsx`
+- `SignalJourneyChapter.jsx`
 
-**Interfaces:**
-- Consumes first three `impactScenarios`, StoryOverlay, MediaFrame, SignalThread, RoiFrame.
-- Produces chapters `context-stories`, `signal-journey`.
+**Modify:** Home/style/order test.
 
-- [ ] **Step 1: Extend RED chapter-order test**
+Context previews are deliberately nonuniform and each visibly says `Illustrative scenario`.
 
-Expected first six chapters:
+Signal Journey replaces old four-card process geometry with four different compositions:
 
-```js
-expect(chapters.slice(0, 6)).toEqual([
-  'hero', 'access-thesis', 'proof', 'science-lineage', 'context-stories', 'signal-journey',
-])
-expect(screen.getAllByText(/illustrative scenario/i)).toHaveLength(3)
-```
+- CAPTURE
+- EXTRACT
+- VERIFY
+- EXPLAIN
 
-- [ ] **Step 2: Implement ContextStories using one selected-ID state and one StoryOverlay**
+Use exact media slots from manifest.
 
-Use the three compositions defined in Home Execution Details; do not map all three into identical card wrappers.
+Desktop may add short sticky/pinned enhancements only after static layout works. Skip pinning under <1024px and reduced motion.
 
-- [ ] **Step 3: Implement CAPTURE/EXTRACT/VERIFY/EXPLAIN in SignalJourney**
-
-Use exact media slots and quality labels. Assign `data-signal-beat="capture|extract|verify|explain"` for QA/testing.
-
-- [ ] **Step 4: Add sticky/pin enhancement only on desktop after static composition works**
-
-Use GSAP ScrollTrigger inside component context. If viewport <1024px or reduced motion, skip pinning and preserve normal flow.
-
-- [ ] **Step 5: Verify**
-
-```bash
-npx vitest run tests/public/home-reference-structure.test.jsx tests/public/story-overlay.test.jsx
-npm test
-npm run build
-```
-
-- [ ] **Step 6: Commit and VISUAL GATE B**
-
-```bash
-git add src/public/components/home-reference src/public/pages/LandingPage.jsx src/public/styles/home-reference.css tests/public/home-reference-structure.test.jsx
-git commit -m "feat(home): add human contexts and signal journey"
-```
-
-Run Gate B checklist before Phase 4.
+Verify and perform **VISUAL GATE B**.
 
 ---
 
-## Phase 4 — Complete Home, Gate C
+# Phase 4 — Complete Home: Gate C
 
-### Task 12: Build screening marquee and irregular documentary media run
+## Task 12: Add semantic screening band and art-directed documentary media run
 
-**Files:**
-- Create: `src/public/components/home-reference/SignalMarqueeChapter.jsx`
-- Create: `src/public/components/home-reference/DocumentaryRunChapter.jsx`
-- Modify: `src/public/content/home.js`
-- Modify: `src/public/pages/LandingPage.jsx`
-- Modify: `src/public/styles/home-reference.css`
-- Modify: `tests/public/home-reference-structure.test.jsx`
+**Create:**
+- `SignalMarqueeChapter.jsx`
+- `DocumentaryRunChapter.jsx`
 
-**Interfaces:**
-- Consumes `LoopBand`, screening content, media slots.
-- Produces `signal-band`, `documentary-run`.
+Signal band items derive from canonical screenings and preserve research/core distinction.
 
-- [ ] **Step 1: Derive band items from canonical screenings**
+Use custom `LoopBand`, not ReactBits Scroll Velocity.
 
-```js
-export const homeSignalBandItems = screenings
-  .filter((item) => ['Core', 'Research proxy', 'Experimental'].includes(item.status))
-  .map(({ id, title, status }) => ({ id, label: title, status, isResearch: status !== 'Core' }))
-```
+Documentary run renders all:
 
-- [ ] **Step 2: Add RED test**
+- `HOME-MEDIA-01` … `HOME-MEDIA-10`
 
-```js
-expect(chapters).toContain('signal-band')
-expect(chapters).toContain('documentary-run')
-expect(container.querySelectorAll('[data-media-slot^="HOME-MEDIA-"]')).toHaveLength(10)
-```
+Use explicit 12-column CSS placement from Home execution companion. Mobile becomes intentional one/two-column sequence.
 
-- [ ] **Step 3: Implement LoopBand with visible research markers**
+Do not use Masonry.
 
-- [ ] **Step 4: Implement explicit 12-column documentary CSS placements**
-
-Render all ten slots even empty; use exact placement guide from Home Execution Details. On <=768px convert to deliberate one/two-column sequence rather than maintaining desktop overlaps.
-
-- [ ] **Step 5: Verify and commit**
-
-```bash
-npx vitest run tests/public/home-reference-structure.test.jsx tests/public/loop-band.test.jsx
-npm test
-npm run build
-git add src/public/components/home-reference src/public/content/home.js src/public/pages/LandingPage.jsx src/public/styles/home-reference.css tests/public/home-reference-structure.test.jsx
-git commit -m "feat(home): add semantic breadth and media rhythm"
-```
+Verify tests/full build. Commit.
 
 ---
 
-### Task 13: Build ivory Trust reset, Evidence/Voices, and language band
+## Task 13: Add ivory Trust reset, Evidence/Voices composition and supported-language band
 
-**Files:**
-- Create: `src/public/components/home-reference/TrustResetChapter.jsx`
-- Create: `src/public/components/home-reference/EvidenceVoicesChapter.jsx`
-- Create: `src/public/components/home-reference/LanguageBandChapter.jsx`
-- Modify: `src/public/content/home.js`
-- Modify: `src/public/pages/LandingPage.jsx`
-- Modify: `src/public/styles/home-reference.css`
-- Create/Modify: `tests/public/home-trust-evidence.test.jsx`
+**Create:**
+- `TrustResetChapter.jsx`
+- `EvidenceVoicesChapter.jsx`
+- `LanguageBandChapter.jsx`
+- `tests/public/home-trust-evidence.test.jsx`
 
-**Interfaces:**
-- Consumes SectionThemeBoundary, QUALITY_FACTORS, LoopBand, SUPPORTED_LANGUAGES.
+Trust:
 
-- [ ] **Step 1: Write RED test**
+`Sometimes the right result is no result.`
 
-```jsx
-it('uses uncertainty as a major reset without fabricating social proof', () => {
-  const { container } = render(<MemoryRouter><LandingPage /></MemoryRouter>)
-  const trust = container.querySelector('[data-home-chapter="trust-reset"]')
-  expect(trust).toHaveAttribute('data-public-theme', 'light')
-  expect(screen.getByText(/sometimes the right result is no result/i)).toBeInTheDocument()
-  expect(screen.getByText(/clinician.*pending/i)).toBeInTheDocument()
-  expect(screen.queryByText(/dr\. [a-z]+ says/i)).not.toBeInTheDocument()
-  expect(screen.getByText('اردو')).toBeInTheDocument()
-})
-```
+Two quality paths:
 
-- [ ] **Step 2: Implement Trust paths**
+- `MOVEMENT → SIGNAL LOST → RETRY`
+- `STABLE INPUT → SIGNAL LOCK → SCREENING CONTEXT`
 
-Render two semantic paths as text + simple thread state:
+Evidence slots:
 
-```text
-MOVEMENT → SIGNAL LOST → RETRY
-STABLE INPUT → SIGNAL LOCK → SCREENING CONTEXT
-```
+- clinician/researcher voice pending;
+- health-worker voice pending;
+- sourced research evidence note;
+- Vytal-owned principle.
 
-- [ ] **Step 3: Implement evidence items without generated quotes**
+Never put generated testimonial prose in pending quote slots.
 
-Pending voice items display label/status/frame only. Research note uses sourced paraphrase. Owned principle displays `AI explains the measurements. It doesn't invent them.` as Vytal principle.
+Language band derives directly from `SUPPORTED_LANGUAGES` and uses custom LoopBand in a visibly different speed/typographic treatment from screening band.
 
-- [ ] **Step 4: Render supported languages from `SUPPORTED_LANGUAGES` via LoopBand**
-
-Do not duplicate list manually.
-
-- [ ] **Step 5: Verify/commit**
-
-```bash
-npx vitest run tests/public/home-trust-evidence.test.jsx tests/public/content-claims.test.js
-npm test
-npm run build
-git add src/public/components/home-reference src/public/content/home.js src/public/pages/LandingPage.jsx src/public/styles/home-reference.css tests/public/home-trust-evidence.test.jsx
-git commit -m "feat(home): add trust reset and evidence rhythm"
-```
+Verify and commit.
 
 ---
 
-### Task 14: Complete Home with platform arc, tangible units and final entry
+## Task 14: Complete Home with platform evolution, concrete value units and final entry
 
-**Files:**
-- Create: `src/public/components/home-reference/PlatformArcChapter.jsx`
-- Create: `src/public/components/home-reference/ConcreteValueChapter.jsx`
-- Create: `src/public/components/home-reference/FinalEntryChapter.jsx`
-- Modify: `src/public/content/home.js`
-- Modify: `src/public/pages/LandingPage.jsx`
-- Modify: `src/public/styles/home-reference.css`
-- Modify: `tests/public/home-reference-structure.test.jsx`
+**Create:**
+- `PlatformArcChapter.jsx`
+- `ConcreteValueChapter.jsx`
+- `FinalEntryChapter.jsx`
 
-**Interfaces:**
-- Produces final 14-chapter Home.
+Platform beats:
 
-- [ ] **Step 1: Replace chapter-order test with full final order**
+1. CAMERA FIRST
+2. CONFIDENCE AWARE
+3. CONTEXT OVER TIME
+4. BEYOND CAMERA — visibly `Research / future direction`
 
-Use exact 14-name array from Home Execution Details.
+Concrete units:
 
-- [ ] **Step 2: Implement four platform beats**
+- 01 Scan
+- 02 Result
+- 03 Explanation
+- 04 History
+- 05 Handoff
 
-Final BEYOND CAMERA item includes visible `Research / future direction` and link `/platform`.
+No fake performance metrics.
 
-- [ ] **Step 3: Implement concrete values exactly as 01–05 semantic units**
+Final CTA:
 
-No fake percentages/counts.
+- `See what your camera can tell you.`
+- Start Screening → `/scan`
+- Explore Screenings → `/screenings`
+- concise screening-not-diagnosis line.
 
-- [ ] **Step 4: Implement final CTA**
+Full Home chapter-order test must now equal the exact 14-chapter order defined in Home execution companion.
 
-Start Screening `/scan`, Explore Screenings `/screenings`, readable `Screening support, not diagnosis.`
-
-- [ ] **Step 5: Verify**
-
-```bash
-npx vitest run tests/public/home-reference-structure.test.jsx tests/public/home-finale.test.jsx tests/public/content-claims.test.js
-npm test
-npm run build
-```
-
-- [ ] **Step 6: Commit and VISUAL GATE C**
-
-```bash
-git add src/public/components/home-reference src/public/content/home.js src/public/pages/LandingPage.jsx src/public/styles/home-reference.css tests/public
-git commit -m "feat(home): complete reference-driven narrative"
-```
-
-Run the complete Gate C checklist. Do not delete old Home files until Gate C passes visually.
+Verify, commit, then run **VISUAL GATE C** across 360 / 430 / 768 / 1024 / 1440 / 1920.
 
 ---
 
-### Task 15: Remove obsolete Home implementation after Gate C
+## Task 15: Remove superseded old Home implementation only after Gate C approval
 
-**Files:**
-- Delete only old Home component files no longer imported.
-- Remove obsolete old landing CSS selectors.
-- Update: tests that reference retired implementation details while preserving valid semantic behavior.
-- Update: `THIRD_PARTY_NOTICES.md` if a copied ReactBits component becomes unused and is removed.
-
-**Interfaces:**
-- Consumes approved Gate C Home.
-- Produces clean public tree with no duplicate visual implementations.
-
-- [ ] **Step 1: Find actual unused files before deleting**
+Search imports before deletion:
 
 ```bash
 rg -n "CameraScienceSection|ProcessSection|ProductProofSection|ScreeningEcosystemSection|TrustSection|AiExplanationSection|LongitudinalSection|ImpactSection|SciencePreviewSection|FutureVisionSection|FinalCtaSection" src tests
 ```
 
-- [ ] **Step 2: Delete only files with no retained imports**
+Delete only no-longer-imported old Home files/CSS.
 
-Do not delete ReactBits adapters still used by new Home/supporting routes.
+Retain ReactBits adapters still used anywhere.
 
-- [ ] **Step 3: Run full verification**
+Run:
 
 ```bash
 npm test
 npm run build
 ```
 
-- [ ] **Step 4: Commit**
-
-```bash
-git add -A
-git commit -m "refactor(home): remove superseded landing compositions"
-```
+Commit cleanup separately.
 
 ---
 
-## Phase 5 — Supporting routes
+# Phase 5 — Supporting routes with distinct physical modes
 
-### Task 16: Expand public routing and add page skeletons without visual duplication
+## Task 16: Expand PublicSite routing
 
-**Files:**
-- Modify: `src/public/PublicSite.jsx`
-- Create: `src/public/pages/ScreeningsPage.jsx`
-- Create: `src/public/pages/SciencePage.jsx`
-- Create: `src/public/pages/ImpactPage.jsx`
-- Create: `src/public/pages/AboutPage.jsx`
-- Create: `src/public/pages/JourneyPage.jsx`
-- Create: `src/public/pages/PlatformPage.jsx`
-- Create: `src/public/pages/PrivacyPage.jsx`
-- Create: `src/public/pages/MedicalDisclaimerPage.jsx`
-- Create: `tests/public/public-routing-expanded.test.jsx`
+Add/lazy-load:
 
-**Interfaces:**
-- Produces route endpoints and lazy imports; page internals may be minimal but truthful until following tasks.
+- `/screenings`
+- `/science`
+- `/impact`
+- `/about`
+- `/journey`
+- `/platform`
+- `/privacy`
+- `/medical-disclaimer`
 
-- [ ] **Step 1: Write RED expanded routing table test**
+Keep public `*` 404.
 
-Use exact route/name table from Supporting Routes plan.
+Create `tests/public/public-routing-expanded.test.jsx` asserting each route’s unique H1/premise.
 
-- [ ] **Step 2: Verify RED**
+Clinical routes continue to be tested separately.
 
-```bash
-npx vitest run tests/public/public-routing-expanded.test.jsx
-```
-
-- [ ] **Step 3: Add lazy route imports and route table**
-
-Use `React.lazy` for Screenings, Science, Impact, About, Journey, Platform. Keep tiny legal pages eager if desired.
-
-- [ ] **Step 4: Create minimal page H1 shells with correct premise only**
-
-These are not final placeholders such as `Coming soon`; they are valid semantic page shells whose following tasks add full chapters. Example:
-
-```jsx
-export default function ScreeningsPage() {
-  return <main className="screenings-page"><h1>What Vytal is designed to screen.</h1></main>
-}
-```
-
-- [ ] **Step 5: GREEN/full/build and commit**
-
-```bash
-npx vitest run tests/public/public-routing-expanded.test.jsx tests/routing.test.jsx
-npm test
-npm run build
-git add src/public/PublicSite.jsx src/public/pages tests/public/public-routing-expanded.test.jsx
-git commit -m "feat(public-routes): add reference-driven route system"
-```
+Commit route skeletons only after full tests/build pass.
 
 ---
 
-### Task 17: Build the Screenings capability atlas
+## Task 17: Build `/screenings` as capability atlas
 
-**Files:**
-- Create: `src/public/components/screenings/ScreeningHero.jsx`
-- Create: `src/public/components/screenings/ScreeningCategoryNav.jsx`
-- Create: `src/public/components/screenings/ScreeningEditorialItem.jsx`
-- Create: `src/public/components/screenings/ScreeningTruthChapter.jsx`
-- Modify: `src/public/pages/ScreeningsPage.jsx`
-- Create: `src/public/styles/screenings.css`
-- Create: `tests/public/screenings-page.test.jsx`
+**Create:** route-specific components/CSS/test defined in supporting-route companion.
 
-**Interfaces:**
-- Consumes canonical `screeningGroups`, `screenings`, media slots, StatusChip.
+Physical mode: precise editorial atlas, not equal cards.
 
-- [ ] **Step 1: Add RED maturity/limitations test**
+Sections:
 
-Use exact test from Supporting Routes Details.
+1. hero
+2. category navigator
+3. Core physiological — largest treatment
+4. Research/experimental — irregular treatment
+5. Context/triage — text-led
+6. Future integrations — distinct future field
+7. `What Vytal does not claim`
+8. product/science CTA.
 
-- [ ] **Step 2: Implement hero/category navigator**
+Every item renders canonical status, input, method/looks-for, output, limitation, confirmation.
 
-Four anchors: Core physiological; Optical/algorithmic research; Context/triage; Future sensing extensions.
+No status may be hidden behind hover.
 
-- [ ] **Step 3: Implement `ScreeningEditorialItem` exact `<dl>` anatomy**
-
-No rewording of `limitation`/`confirmation` in JSX.
-
-- [ ] **Step 4: Create nonuniform group layouts**
-
-Core receives largest treatment; research items vary size; context text-led; future chapter clearly separate.
-
-- [ ] **Step 5: Implement `What Vytal does not claim`**
-
-Use reviewed limitations.
-
-- [ ] **Step 6: Verify/commit**
-
-```bash
-npx vitest run tests/public/screenings-page.test.jsx tests/public/content-claims.test.js
-npm test
-npm run build
-git add src/public/components/screenings src/public/pages/ScreeningsPage.jsx src/public/styles/screenings.css tests/public/screenings-page.test.jsx
-git commit -m "feat(screenings): build capability atlas"
-```
+Verify `screenings-page.test.jsx`, claim test, full suite, build. Commit.
 
 ---
 
-### Task 18: Build Science as an irregular sourced timeline/exhibition
+## Task 18: Build `/science` as irregular sourced timeline/exhibition
 
-**Files:**
-- Modify: `src/public/content/science.js`
-- Create: `src/public/components/science/ScienceHero.jsx`
-- Create: `src/public/components/science/ScienceTimeline.jsx`
-- Create: `src/public/components/science/ScienceMilestone.jsx`
-- Create: `src/public/components/science/ScienceResearchBranches.jsx`
-- Create: `src/public/components/science/WhatWeDoNotClaim.jsx`
-- Create: `src/public/components/science/ValidationRoadmap.jsx`
-- Modify: `src/public/pages/SciencePage.jsx`
-- Create: `src/public/styles/science.css`
-- Create: `tests/public/science-page.test.jsx`
+**Create:** ScienceHero, ScienceTimeline, ScienceMilestone, ScienceResearchBranches, WhatWeDoNotClaim, ValidationRoadmap, science CSS/test.
 
-**Interfaces:**
-- Consumes exact verified milestones created Task 9 plus research screening model.
+Use verified 2008/2010/2013/2016/2017/2019 milestones plus separate 2026 internal Vytal milestone.
 
-- [ ] **Step 1: Write RED page/citation test**
+Physical rules:
 
-Use Supporting Routes test; additionally assert every `scienceMilestone` has non-placeholder year + citation URL.
+- Signal Thread becomes long timeline rail;
+- milestone weight controls geometry (`minor`, `major`, `feature`);
+- no equal card map;
+- mobile becomes one-side vertical rail;
+- no unresolved year markers;
+- primary citations visible/linked;
+- research literature ≠ validation of Vytal implementation.
 
-- [ ] **Step 2: Implement ScienceHero**
+Mandatory chapters:
 
-H1: `The interface is simple. The measurement problem is not.`; hero uses `SCI-HERO-01` media/diagram frame.
+- measurement problem
+- camera/ROI
+- signal extraction
+- motion/lighting
+- beat timing/variability
+- screening research branches
+- uncertainty
+- current implementation truth
+- What We Do Not Claim
+- validation roadmap
+- references.
 
-- [ ] **Step 3: Implement timeline ordered list + Signal Thread vertical rail**
-
-`ScienceMilestone` changes layout based on `weight`. `feature` may span width/full chapter; `minor` stays compact. Do not render uniform cards.
-
-- [ ] **Step 4: Add research branches from `screenings.js`**
-
-Group SpO2/rhythm/anemia/jaundice/BP/BMI with explicit statuses/limitations.
-
-- [ ] **Step 5: Implement WhatWeDoNotClaim + validation roadmap + references**
-
-References link to the primary URLs stored in content data.
-
-- [ ] **Step 6: Verify/commit**
-
-```bash
-npx vitest run tests/public/science-page.test.jsx tests/public/content-claims.test.js
-npm test
-npm run build
-git add src/public/content/science.js src/public/components/science src/public/pages/SciencePage.jsx src/public/styles/science.css tests/public/science-page.test.jsx
-git commit -m "feat(science): build sourced signal-history experience"
-```
+Verify test/full suite/build. Commit.
 
 ---
 
-### Task 19: Build Impact as a longitudinal/context story archive
+## Task 19: Build `/impact` as illustrative context/story archive
 
-**Files:**
-- Create: `src/public/components/impact/ImpactHero.jsx`
-- Create: `src/public/components/impact/ImpactScenarioTile.jsx`
-- Create: `src/public/components/impact/ImpactScenarioArchive.jsx`
-- Create: `src/public/components/impact/ImpactWorkflowBand.jsx`
-- Modify: `src/public/pages/ImpactPage.jsx`
-- Create: `src/public/styles/impact.css`
-- Create: `tests/public/impact-page.test.jsx`
+**Create:** ImpactHero, ImpactScenarioTile, ImpactScenarioArchive, ImpactWorkflowBand, impact CSS/test.
 
-**Interfaces:**
-- Consumes Task-10 `impactScenarios` + StoryOverlay.
+Use Task-10 scenarios.
 
-- [ ] **Step 1: Write RED illustrative/archive test**
+Physical mode:
 
-Use exact test in Supporting Routes, using `fireEvent` if user-event is not installed.
+- human/context-heavy nonuniform archive;
+- same-page StoryOverlay;
+- 2–4 media slots per detailed story;
+- clear Illustrative Scenario label;
+- `SCREEN / SAVE / EXPLAIN / REFER` rhythm band;
+- no fake names/quotes/outcomes.
 
-- [ ] **Step 2: Implement nonuniform archive**
-
-Each tile shows media placeholder + label + title + summary. Button accessible name is scenario title.
-
-- [ ] **Step 3: Wire one StoryOverlay with prev/next navigation**
-
-Compute index from selected ID; wrap previous/next at edges or disable controls consistently.
-
-- [ ] **Step 4: Add `SCREEN / SAVE / EXPLAIN / REFER` LoopBand/large rhythm chapter**
-
-- [ ] **Step 5: Verify/commit**
-
-```bash
-npx vitest run tests/public/impact-page.test.jsx tests/public/story-overlay.test.jsx
-npm test
-npm run build
-git add src/public/components/impact src/public/pages/ImpactPage.jsx src/public/styles/impact.css tests/public/impact-page.test.jsx
-git commit -m "feat(impact): add illustrative context archive"
-```
+Verify overlay + route tests/full build. Commit.
 
 ---
 
-### Task 20: Build concise About page and action directory
+## Task 20: Build `/about` as shorter mission/principles page
 
-**Files:**
-- Create: `src/public/content/about.js`
-- Create: `src/public/components/about/AboutHero.jsx`
-- Create: `src/public/components/about/AboutPrinciples.jsx`
-- Create: `src/public/components/about/AboutActionDirectory.jsx`
-- Modify: `src/public/pages/AboutPage.jsx`
-- Create: `src/public/styles/about.css`
-- Create: `tests/public/about-page.test.jsx`
+Create content/components/CSS/test.
 
-**Interfaces:**
-- Produces short origin/principles route.
+H1 concept:
 
-- [ ] **Step 1: RED test exact principle/anti-corporate contract**
+`Make sophisticated screening easier to reach—and harder to overclaim.`
 
-Use Supporting Routes test.
+Four principles, rendered at different visual weights rather than equal cards:
 
-- [ ] **Step 2: Implement verified origin/principles copy**
+- Accessible
+- Evidence-aware
+- Honest about uncertainty
+- Human-understandable
 
-Do not add fake company history, partner logos, office, careers or investor claims.
+Team/project frames remain empty until real assets exist.
 
-- [ ] **Step 3: Render four principles at different visual weights**
+No fake partners, office, careers, corporate biography filler.
 
-Avoid four equal cards.
+End with route action directory.
 
-- [ ] **Step 4: Render team/project media placeholders and route action directory**
-
-- [ ] **Step 5: Verify/commit**
-
-```bash
-npx vitest run tests/public/about-page.test.jsx tests/public/content-claims.test.js
-npm test
-npm run build
-git add src/public/content/about.js src/public/components/about src/public/pages/AboutPage.jsx src/public/styles/about.css tests/public/about-page.test.jsx
-git commit -m "feat(about): add concise principles experience"
-```
+Verify and commit.
 
 ---
 
-### Task 21: Build the illustrative Journey case-study experience
+## Task 21: Build `/journey` as one illustrative case-study spine
 
-**Files:**
-- Create: `src/public/content/journey.js`
-- Create: `src/public/components/journey/JourneyHero.jsx`
-- Create: `src/public/components/journey/JourneyQualityBeat.jsx`
-- Create: `src/public/components/journey/JourneyResultBeat.jsx`
-- Create: `src/public/components/journey/JourneyTrendBeat.jsx`
-- Modify: `src/public/pages/JourneyPage.jsx`
-- Create: `src/public/styles/journey.css`
-- Create: `tests/public/journey-page.test.jsx`
+Mandatory top label:
 
-**Interfaces:**
-- Produces single story spine analogous to reference Mazen mode without fake patient.
+`ILLUSTRATIVE SCREENING JOURNEY — NOT A REAL PATIENT CASE`
 
-- [ ] **Step 1: RED ordering/disclaimer test**
+Beat order:
 
-Use exact test from Supporting Routes.
+1. context
+2. low-confidence first scan
+3. signal lock on retry
+4. example result
+5. explanation
+6. saved history
+7. illustrative trend
+8. verified facts band
+9. final CTA.
 
-- [ ] **Step 2: Create data with beats in exact order**
+The key dramatic event is **honest failure**: Vytal asks for a repeat before showing a result.
 
-`context`, `low-confidence`, `signal-lock`, `example-result`, `explanation`, `history`, `trend`.
+All sample metrics/graphs visibly say `EXAMPLE READING` / `ILLUSTRATIVE TREND`.
 
-- [ ] **Step 3: Implement Hero + failure/retry beat**
-
-The low-confidence beat must visually dominate before any result. Show `LOW CONFIDENCE / REPEAT` and relevant quality factors.
-
-- [ ] **Step 4: Implement example result + explanation + history/trend**
-
-Every sample numeric/graph region contains visible `EXAMPLE READING` or `ILLUSTRATIVE TREND`.
-
-- [ ] **Step 5: Add verified fact LoopBand and final CTA**
-
-- [ ] **Step 6: Verify/commit**
-
-```bash
-npx vitest run tests/public/journey-page.test.jsx tests/public/content-claims.test.js
-npm test
-npm run build
-git add src/public/content/journey.js src/public/components/journey src/public/pages/JourneyPage.jsx src/public/styles/journey.css tests/public/journey-page.test.jsx
-git commit -m "feat(journey): add illustrative screening case study"
-```
+Verify order/disclaimer test/full build. Commit.
 
 ---
 
-### Task 22: Build Platform fragments-to-context experience
+## Task 22: Build `/platform` as fragments-to-context metaphor
 
-**Files:**
-- Create: `src/public/content/platform.js`
-- Create: `src/public/components/platform/PlatformHero.jsx`
-- Create: `src/public/components/platform/PlatformFragment.jsx`
-- Create: `src/public/components/platform/PlatformAssembly.jsx`
-- Modify: `src/public/pages/PlatformPage.jsx`
-- Create: `src/public/styles/platform.css`
-- Create: `tests/public/platform-page.test.jsx`
+Fragment IDs:
 
-**Interfaces:**
-- Produces page-specific visual metaphor analogous to reference Mosaic role.
+- camera
+- BLE
+- wearable
+- thermal
+- records
+- language
+- referral
+- population
 
-- [ ] **Step 1: RED future-status test**
+Each has explicit current/prototype/future/research status.
 
-Use exact Supporting Routes test.
+Desktop starts visually scattered; Signal Thread `network` connects fragments as scroll progresses. Mobile uses ordered normal flow.
 
-- [ ] **Step 2: Create fragment data with explicit statuses**
+No literal mosaic tiles.
 
-Use eight IDs: camera, ble, wearable, thermal, records, language, referral, population. Align status copy with current implementation truth.
+Headline:
 
-- [ ] **Step 3: Implement scattered fragment field**
+`One signal is a fragment. Context makes the picture.`
 
-Desktop uses explicit absolute/grid offsets inside controlled section; mobile uses normal ordered stack.
+Final chapter returns to current product + Science.
 
-- [ ] **Step 4: Implement assembly state**
-
-Signal Thread variant `network` connects fragments as scroll progresses. No literal mosaic tiles.
-
-- [ ] **Step 5: Add large future/research notice and current-product close**
-
-- [ ] **Step 6: Verify/commit**
-
-```bash
-npx vitest run tests/public/platform-page.test.jsx tests/public/content-claims.test.js
-npm test
-npm run build
-git add src/public/content/platform.js src/public/components/platform src/public/pages/PlatformPage.jsx src/public/styles/platform.css tests/public/platform-page.test.jsx
-git commit -m "feat(platform): connect future sensing fragments"
-```
+Verify test/full build. Commit.
 
 ---
 
-### Task 23: Finalize Privacy, Medical Disclaimer and public 404
+## Task 23: Finalize Privacy, Medical Disclaimer and public 404
 
-**Files:**
-- Modify: `src/public/pages/PrivacyPage.jsx`
-- Modify: `src/public/pages/MedicalDisclaimerPage.jsx`
-- Modify: `src/public/pages/PublicNotFoundPage.jsx`
-- Create: `src/public/styles/legal.css`
-- Create: `tests/public/legal-pages.test.jsx`
+Legal/trust routes are deliberately plain and readable.
 
-**Interfaces:**
-- Produces trustworthy low-motion legal routes.
+Privacy copy must reflect actual code/data flow only; do not promise backend/cloud properties that are not implemented.
 
-- [ ] **Step 1: RED medical disclaimer test**
+Medical Disclaimer must state:
 
-```jsx
-it('states the screening boundary and symptom override clearly', () => {
-  render(<MemoryRouter><MedicalDisclaimerPage /></MemoryRouter>)
-  expect(screen.getByRole('heading', { level: 1, name: /medical disclaimer/i })).toBeInTheDocument()
-  expect(screen.getByText(/not a medical diagnosis/i)).toBeInTheDocument()
-  expect(screen.getByText(/urgent symptoms/i)).toBeInTheDocument()
-})
-```
+- screening/research support, not diagnosis;
+- experimental pathways exist;
+- low-confidence limitations;
+- validated clinical confirmation can be necessary;
+- urgent/concerning symptoms override app reassurance.
 
-- [ ] **Step 2: Write privacy copy from actual current data behavior**
+Run legal test + expanded route tests + full suite/build.
 
-Describe camera/local/API behavior only to the extent verified by current code. Do not promise backend/cloud guarantees not present.
-
-- [ ] **Step 3: Implement plain readable layouts**
-
-No marquee, pinned scroll or heavy Signal Thread animation.
-
-- [ ] **Step 4: Verify/commit**
-
-```bash
-npx vitest run tests/public/legal-pages.test.jsx tests/public/public-routing-expanded.test.jsx
-npm test
-npm run build
-git add src/public/pages src/public/styles/legal.css tests/public/legal-pages.test.jsx
-git commit -m "feat(trust): finalize public privacy and medical boundaries"
-```
-
-- [ ] **Step 5: VISUAL GATE D**
-
-Run full route-system checklist before global polish.
+Then perform **VISUAL GATE D** on all public routes at 390 / 768 / 1440, plus 1920 for Home/Science/Platform.
 
 ---
 
-## Phase 6 — Cross-route polish, accessibility and performance
+# Phase 6 — Continuity, accessibility and performance
 
-### Task 24: Add public-only route continuity and scroll restoration
+## Task 24: Add reliable public scroll restoration and subtle continuity only
 
-**Files:**
-- Create: `src/public/components/system/PublicRouteTransition.jsx` only if visual prototype passes.
-- Create: `src/public/hooks/usePublicScrollRestoration.js` or small route effect in `PublicLayout.jsx`.
-- Modify: `src/public/PublicLayout.jsx`
-- Create/Modify: `tests/public/public-route-continuity.test.jsx`
+**No custom full-screen route wipe in this plan.**
 
-**Interfaces:**
-- Produces route scroll-to-top and optional short Signal Thread wipe.
+Implement a small `usePublicScrollRestoration` or `useLocation()` effect in `PublicLayout` that resets scroll on public pathname changes.
 
-- [ ] **Step 1: Test scroll restoration behavior**
+Test by mocking `window.scrollTo`.
 
-Mock `window.scrollTo` and render route change; expect `{ top: 0 }` or equivalent call.
+Nav/theme changes may transition softly, but route navigation must not be delayed.
 
-- [ ] **Step 2: Implement scroll restoration first**
+`/scan` entry remains immediate.
 
-Use `useLocation()` effect; do not wait for animation.
-
-- [ ] **Step 3: Prototype transition**
-
-If a ~450–750ms Signal Thread wipe improves route continuity without delaying `/scan`, retain it. Otherwise skip it; route-transition spectacle is lower priority than page quality.
-
-- [ ] **Step 4: Ensure clinical entry bypasses/shortens public transition**
-
-`/scan` navigation should remain immediate enough for product entry.
-
-- [ ] **Step 5: Verify/commit**
-
-```bash
-npx vitest run tests/public/public-route-continuity.test.jsx tests/routing.test.jsx
-npm test
-npm run build
-git add src/public tests/public/public-route-continuity.test.jsx
-git commit -m "feat(public-motion): add route continuity"
-```
-
-If transition is rejected, commit only scroll restoration with a correspondingly accurate message.
+Verify routing + full build. Commit.
 
 ---
 
-### Task 25: Complete responsive, keyboard and reduced-motion pass
+## Task 25: Complete responsive, keyboard and reduced-motion hardening
 
-**Files:**
-- Modify: `src/public/styles/responsive.css`
-- Modify: route/system CSS files as findings require.
-- Modify: `src/public/components/PublicNav.jsx`, `StoryOverlay.jsx`, Signal/Loop components only for discovered accessibility defects.
-- Add focused regression tests for each defect found.
+Manual viewport matrix:
 
-**Interfaces:**
-- Consumes completed route system.
-- Produces mobile/reduced-motion/a11y-complete public site.
+- 360×800
+- 390×844
+- 430×932
+- 768×1024
+- 1024×768
+- 1280×800
+- 1440×900
+- 1920×1080
 
-- [ ] **Step 1: Run manual viewport matrix from QA plan**
+Fix concrete defects only, with regression tests.
 
-Use dev server and inspect required widths.
+Required behavior:
 
-- [ ] **Step 2: Fix overflow and mobile substitutions explicitly**
+- giant typography clamps correctly;
+- media stays full bleed where intended;
+- mobile timelines use one rail;
+- pinned/sticky sequences become normal flow on mobile/reduced motion;
+- StoryOverlay is full-screen mobile;
+- LoopBands stop and become readable static rows under reduced motion;
+- Magnet disabled on coarse pointer;
+- no hover-only meaning;
+- no page-level horizontal overflow;
+- menu Escape/focus behavior works;
+- status never relies on color alone.
 
-Rules:
-- timelines one-side rail mobile;
-- pinned chapters normal flow mobile/reduced motion;
-- StoryOverlay full screen mobile;
-- marquees static/slower fallback;
-- Magnet disabled coarse pointer;
-- parallax off mobile/reduced motion.
-
-- [ ] **Step 3: Keyboard pass**
-
-Nav, menu, story archive/overlay, CTAs, route focus behavior.
-
-- [ ] **Step 4: Add tests for every concrete defect fixed**
-
-Example if mobile menu Escape is broken:
-
-```jsx
-fireEvent.click(screen.getByRole('button', { name: /menu/i }))
-expect(screen.getByRole('navigation', { name: /mobile/i })).toBeInTheDocument()
-fireEvent.keyDown(document, { key: 'Escape' })
-expect(screen.queryByRole('navigation', { name: /mobile/i })).not.toBeInTheDocument()
-```
-
-- [ ] **Step 5: Full verify/commit**
-
-```bash
-npm test
-npm run build
-git add src/public tests/public
-git commit -m "fix(a11y): harden responsive and reduced-motion experience"
-```
+Run full tests/build after fixes. Commit.
 
 ---
 
-### Task 26: Performance and bundle hardening
+## Task 26: Performance and bundle hardening against Task-1 baseline
 
-**Files:**
-- Modify only files identified by profiling/build output.
-- Potentially adjust lazy imports, media loading, ReactBits components, CSS.
-- No speculative refactor without measured issue.
-
-**Interfaces:**
-- Produces final public bundle/runtime within reasonable budget without clinical regression.
-
-- [ ] **Step 1: Run fresh build and compare baseline**
+Run:
 
 ```bash
 npm run build
-```
-
-Record public Home chunk, secondary route chunks, clinical/main chunks.
-
-- [ ] **Step 2: Check dependency violations**
-
-```bash
 npm ls three ogl framer-motion motion lenis face-api.js 2>/dev/null || true
 ```
 
-Expected: none introduced by redesign unless explicitly approved contrary to plan.
+Expected: none of those new public dependencies have been added.
 
-- [ ] **Step 3: Inspect likely runtime leaks**
+Compare:
 
-Route Home → Science → Impact → Home repeatedly; verify ScrollTrigger count does not monotonically grow and offscreen video behavior is sane.
+- Public Home chunk
+- each lazy public route
+- shared/main
+- clinical bundle
 
-- [ ] **Step 4: Apply measured fixes**
+Target: public landing JS roughly under 100 kB gzip beyond shared React/router code where practical. A breach requires documented visible benefit.
 
-Priority order:
-1. remove unused ReactBits adapter/dependency;
+Runtime checks:
+
+- Home → Science → Impact → Home repeatedly;
+- ScrollTrigger count must not monotonically grow;
+- GSAP tweens killed on unmount;
+- offscreen videos pause/lazy-load as appropriate;
+- no runaway RAF loops;
+- loops duplicate minimal DOM;
+- hero only high-priority media;
+- below-fold media lazy.
+
+Measured fixes priority:
+
+1. remove unused component/adaptation;
 2. lazy-load route-specific code;
-3. simplify low-value animation;
-4. reduce DOM duplication in loops;
-5. optimize media loading.
+3. simplify low-value motion;
+4. reduce loop DOM duplication;
+5. optimize media.
 
-- [ ] **Step 5: Clinical bundle regression check**
-
-Compare build output to Task 1 baseline. Public-only code should not inflate clinical route entry materially.
-
-- [ ] **Step 6: Verify/commit**
-
-```bash
-npm test
-npm run build
-git add -A
-git commit -m "perf(public): harden reference-driven experience"
-```
+Run full tests/build and commit performance work.
 
 ---
 
-### Task 27: Final content/evidence and third-party cleanup
+## Task 27: Final content/evidence/license cleanup
 
-**Files:**
-- Modify: public content files only for verified corrections.
-- Modify: `THIRD_PARTY_NOTICES.md`
-- Delete unused ReactBits adapters after import search.
-- Update: `README.md` or landing-page docs with new public routes if appropriate.
-
-**Interfaces:**
-- Produces content/legal/licensing-clean release candidate.
-
-- [ ] **Step 1: Run claim searches**
+Run:
 
 ```bash
 rg -n "medical-grade|replaces your doctor|replaces a doctor|saves lives|trusted by|used in [0-9]+ countries" src/public
 rg -n "ILLUSTRATIVE|EXAMPLE READING|Research / future direction|Future integration" src/public
+rg -n "YYYY|TBD|TODO|lorem ipsum" src/public
 ```
 
 Review every hit manually.
 
-- [ ] **Step 2: Verify scientific URLs/content**
+Requirements:
 
-Every `scienceMilestones` item must contain an actual cited URL and no `YYYY`, `TBD`, `TODO` or placeholder prose.
+- no unresolved scientific dates;
+- no fabricated proof;
+- all future integrations visibly labelled;
+- all illustrative scenarios labelled;
+- all sample metrics labelled;
+- all Science milestones carry actual citation URLs;
+- no unused ReactBits adapters remain;
+- `THIRD_PARTY_NOTICES.md` describes only retained copied source.
 
-```bash
-rg -n "YYYY|TBD|TODO|lorem ipsum" src/public docs/superpowers/plans docs/superpowers/specs
-```
+Search imports before deleting components.
 
-Any docs use of the word `placeholder` is expected for media; unresolved implementation content is not.
-
-- [ ] **Step 3: Remove unused adapters only after search**
-
-```bash
-for name in CardSwap PixelTransition SpotlightCard ScrollReveal SplitText Magnet; do rg -n "$name" src/public || true; done
-```
-
-Delete only truly unused source and update third-party notice accordingly.
-
-- [ ] **Step 4: Full verify/commit**
-
-```bash
-npm test
-npm run build
-git add -A
-git commit -m "chore(public): finalize content and dependency hygiene"
-```
+Run full tests/build. Commit cleanup.
 
 ---
 
-### Task 28: Final verification and implementation handoff
+# Phase 7 — Fresh final verification
 
-**Files:**
-- No production changes unless verification discovers a defect; defects receive focused fix/test commits before re-running this task.
+## Task 28: Verify completion from scratch and prepare handoff
 
-**Interfaces:**
-- Produces release-ready evidence, not a new feature.
+No success claim until this task is freshly executed.
 
-- [ ] **Step 1: Run fresh complete automated verification**
+Run:
 
 ```bash
 npm test
 npm run build
-```
-
-Expected: zero failing tests; build exit 0.
-
-- [ ] **Step 2: Run complete Visual Gate D + clinical regression pass**
-
-Review all routes and required widths from QA companion. Explicitly check `/scan`, `/dashboard`, `/report` remain clinical and free of public chrome/motion leakage.
-
-- [ ] **Step 3: Verify working tree**
-
-```bash
-git status --short
 git diff --check
+git status --short
 ```
 
-Expected: clean working tree; no whitespace errors.
+Expected:
 
-- [ ] **Step 4: Compare implementation branch against green base**
+- zero failed tests;
+- production build exit 0;
+- no whitespace errors;
+- clean working tree.
+
+Then run final manual Visual Gate D and clinical regression:
+
+- `/`
+- `/screenings`
+- `/science`
+- `/impact`
+- `/about`
+- `/journey`
+- `/platform`
+- `/privacy`
+- `/medical-disclaimer`
+- `/scan`
+- `/dashboard`
+- `/report`
+
+Verify public nav/motion never leaks into clinical pages.
+
+Compare implementation scope:
 
 ```bash
 git diff --stat b444173f299f5e2022e53890363e77af877e5246...HEAD
 git log --oneline b444173f299f5e2022e53890363e77af877e5246..HEAD
 ```
 
-Review scope for accidental clinical changes.
-
-- [ ] **Step 5: Prepare final handoff summary**
-
-Include:
+Final handoff must state:
 
 - routes built;
 - visual gates passed;
-- empty media slot inventory still requiring assets;
-- current real vs illustrative content status;
-- public/clinical bundle sizes;
 - tests/build evidence;
-- any intentionally deferred real photography/quotes;
-- no claim that missing assets are complete content.
+- public/clinical bundle sizes;
+- all still-empty media slot IDs or asset groups;
+- which content is real, sourced, illustrative or future/research;
+- any real photography/quotes intentionally still pending.
+
+Do not call empty media/story slots “complete content.”
 
 ---
 
-# Implementation sequencing summary
-
-```text
-1  clean green worktree
-2  site facts + claim guardrails
-3  media manifest + MediaFrame
-4  reduced motion
-5  Signal Thread
-6  themed public shell
-7  LoopBand / CountUp spike
-8  Hero + access thesis
-9  proof + science teaser        → VISUAL GATE A
-10 StoryOverlay + Impact data
-11 context stories + signal journey → VISUAL GATE B
-12 signal marquee + media run
-13 trust + evidence + language
-14 platform arc + values + close → VISUAL GATE C
-15 remove old Home implementation
-16 expand routes
-17 Screenings
-18 Science
-19 Impact
-20 About
-21 Journey
-22 Platform
-23 legal/trust pages            → VISUAL GATE D
-24 route continuity
-25 responsive/a11y/reduced motion
-26 performance/bundle hardening
-27 content/license cleanup
-28 final fresh verification
-```
-
 # Final acceptance standard
 
-The work is not complete merely because all routes render.
+This redesign is accepted only when all of the following are true:
 
-Completion requires all of the following simultaneously:
-
-- Vytal public experience has reference-like editorial rhythm and page specialization;
-- Signal Thread provides one ownable Vytal-native semantic language across routes;
-- Home no longer reads as a uniform product-section stack;
-- empty image/video frames are treated as final production geometry;
-- Screenings is medically explicit about maturity;
-- Science is sourced and honest about validation;
-- Impact/Journey never fabricate patients or outcomes;
-- Platform never presents future integrations as current;
-- ReactBits remains implementation support rather than visual identity;
-- mobile/reduced-motion experiences remain intentional;
-- public animation/runtime does not contaminate the clinical app;
-- all tests pass and the production build succeeds in a fresh final run.
+1. Home no longer reads as a sequence of uniform SaaS product sections.
+2. The public experience carries reference-like cinematic/editorial pacing and deliberate quiet sections.
+3. The Signal Thread is a recognizable Vytal-native semantic system across multiple routes without becoming an ECG clone.
+4. Media placeholders occupy real production geometry and the site still feels intentionally composed while they are empty.
+5. Screenings visibly distinguishes core, research, contextual and future maturity.
+6. Science is sourced, irregular and explicit about validation limits.
+7. Impact/Journey never fabricate a patient or outcome.
+8. Platform never presents future hardware as current production support.
+9. Supporting routes have distinct narrative physics rather than reusing Home layouts.
+10. ReactBits remains a source of selected useful mechanics, not the site’s visual identity.
+11. Mobile and reduced-motion versions are deliberately designed, not merely desktop collapsed vertically.
+12. Public motion/dependencies do not contaminate clinical app performance or styling.
+13. Fresh final tests pass and production build succeeds.
