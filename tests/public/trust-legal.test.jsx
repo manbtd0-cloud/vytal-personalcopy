@@ -52,7 +52,10 @@ test('Medical Disclaimer makes diagnosis, uncertainty and urgent-care boundaries
 
   const confirmation = document.querySelector('#medical-confirmation')
   expect(confirmation).toBeInTheDocument()
-  expect(within(confirmation).getByText(/clinical confirmation/i)).toBeInTheDocument()
+  expect(
+    within(confirmation).getByRole('heading', { name: /clinical confirmation may be necessary/i }),
+  ).toBeInTheDocument()
+  expect(within(confirmation).getByText(/qualified healthcare professional/i)).toBeInTheDocument()
 })
 
 test('Unknown public routes resolve to a useful branded 404 without capturing clinical paths', async () => {
