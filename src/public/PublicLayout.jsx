@@ -3,6 +3,7 @@ import PublicNav from './components/PublicNav.jsx'
 import PublicFooter from './components/PublicFooter.jsx'
 import PublicScrollRestoration from './components/system/PublicScrollRestoration.jsx'
 import useSectionTheme from './hooks/useSectionTheme.js'
+import './styles/public-hardening.css'
 
 export default function PublicLayout() {
   const theme = useSectionTheme('dark')

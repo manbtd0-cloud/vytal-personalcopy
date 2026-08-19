@@ -30,8 +30,11 @@ export default function PublicNav({ theme = 'dark' }) {
     document.body.style.overflow = 'hidden'
 
     const menu = menuRef.current
-    const nodes = focusableNodes(menu)
-    nodes[0]?.focus()
+    const menuNodes = focusableNodes(menu)
+    const closeButton = menuButtonRef.current
+    const cycleNodes = [closeButton, ...menuNodes].filter(Boolean)
+    const initialNode = menuNodes[0] ?? closeButton
+    initialNode?.focus()
 
     const onKeyDown = (event) => {
       if (event.key === 'Escape') {
@@ -40,19 +43,19 @@ export default function PublicNav({ theme = 'dark' }) {
         return
       }
 
-      if (event.key !== 'Tab') return
-      const currentNodes = focusableNodes(menuRef.current)
-      if (!currentNodes.length) return
-      const first = currentNodes[0]
-      const last = currentNodes[currentNodes.length - 1]
+      if (event.key !== 'Tab' || !cycleNodes.length) return
 
-      if (event.shiftKey && document.activeElement === first) {
+      const currentIndex = cycleNodes.indexOf(document.activeElement)
+      if (currentIndex === -1) {
         event.preventDefault()
-        last.focus()
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault()
-        first.focus()
+        initialNode?.focus()
+        return
       }
+
+      event.preventDefault()
+      const direction = event.shiftKey ? -1 : 1
+      const nextIndex = (currentIndex + direction + cycleNodes.length) % cycleNodes.length
+      cycleNodes[nextIndex]?.focus()
     }
 
     document.addEventListener('keydown', onKeyDown)

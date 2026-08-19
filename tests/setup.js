@@ -16,6 +16,12 @@ if (!window.matchMedia) {
   })
 }
 
+Object.defineProperty(window, 'scrollTo', {
+  configurable: true,
+  writable: true,
+  value: () => {},
+})
+
 const pendingAnimationFrames = new Set()
 
 if (!globalThis.requestAnimationFrame) {
