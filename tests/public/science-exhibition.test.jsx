@@ -3,16 +3,6 @@ import { MemoryRouter } from 'react-router-dom'
 import SciencePage from '../../src/public/pages/SciencePage.jsx'
 import { scienceMilestones } from '../../src/public/content/science.js'
 
-const milestoneMediaSlots = [
-  'SCI-2008-01',
-  'SCI-2010-01',
-  'SCI-2013-01',
-  'SCI-2016-01',
-  'SCI-2017-01',
-  'SCI-2019-01',
-  'SCI-VYTAL-01',
-]
-
 test('Science renders the complete sourced rPPG lineage as an irregular timeline', () => {
   const { container } = render(
     <MemoryRouter>
@@ -35,6 +25,7 @@ test('Science renders the complete sourced rPPG lineage as an irregular timeline
   scienceMilestones.forEach((milestone, index) => {
     const item = renderedMilestones[index]
     const queries = within(item)
+    expect(item).toHaveAttribute('data-weight', milestone.weight)
     expect(queries.getByText(String(milestone.year))).toBeInTheDocument()
     expect(queries.getByRole('heading', { name: milestone.title })).toBeInTheDocument()
     expect(queries.getByText(milestone.authors)).toBeInTheDocument()
@@ -49,7 +40,7 @@ test('Science renders the complete sourced rPPG lineage as an irregular timeline
       expect(queries.getByText(/not a peer-reviewed research publication/i)).toBeInTheDocument()
     }
 
-    expect(item.querySelector(`[data-media-slot="${milestoneMediaSlots[index]}"]`)).toBeInTheDocument()
+    expect(item.querySelector(`[data-media-slot="${milestone.mediaSlotId}"]`)).toBeInTheDocument()
   })
 })
 
@@ -62,12 +53,12 @@ test('Science separates implementation mechanics, failure conditions and validat
 
   const implementation = container.querySelector('[data-science-chapter="implementation"]')
   expect(implementation).toBeInTheDocument()
-  expect(implementation.querySelector('[data-media-slot="SCI-HERO-DIAGRAM-01"]')).toBeInTheDocument()
+  expect(implementation.querySelector('[data-media-slot="SCI-HERO-01"]')).toBeInTheDocument()
   expect(within(implementation).getByText(/camera frames → roi → color signal → filtering → beat timing → context/i)).toBeInTheDocument()
 
   const failure = container.querySelector('[data-science-chapter="failure-conditions"]')
   expect(failure).toBeInTheDocument()
-  expect(failure.querySelector('[data-media-slot="SCI-QUALITY-01"]')).toBeInTheDocument()
+  expect(failure.querySelector('[data-media-slot="SCI-TIMELINE-UNCERTAINTY-01"]')).toBeInTheDocument()
   for (const condition of ['Motion', 'Lighting', 'Face visibility', 'Compression', 'Camera auto-exposure', 'Insufficient clean signal']) {
     expect(within(failure).getByText(condition)).toBeInTheDocument()
   }

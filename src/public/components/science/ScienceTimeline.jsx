@@ -3,16 +3,6 @@ import SignalThread from '../system/SignalThread.jsx'
 import { scienceMilestones } from '../../content/science.js'
 import { getMediaSlotById } from '../../content/mediaSlots.js'
 
-const milestoneSlotIds = {
-  'verkruysse-2008': 'SCI-2008-01',
-  'poh-2010': 'SCI-2010-01',
-  'dehaan-2013': 'SCI-2013-01',
-  'moco-2016': 'SCI-2016-01',
-  'wang-2017': 'SCI-2017-01',
-  'gudi-2019': 'SCI-2019-01',
-  'vytal-2026': 'SCI-VYTAL-01',
-}
-
 export default function ScienceTimeline() {
   return (
     <section className="science-timeline" data-science-timeline>
@@ -26,13 +16,14 @@ export default function ScienceTimeline() {
 
       <div className="public-shell science-timeline__items">
         {scienceMilestones.map((milestone, index) => {
-          const slot = getMediaSlotById(milestoneSlotIds[milestone.id])
+          const slot = getMediaSlotById(milestone.mediaSlotId)
           const published = milestone.kind === 'published'
 
           return (
             <article
               className={`science-milestone science-milestone--${index + 1} ${published ? 'is-published' : 'is-internal'}`}
               data-science-milestone={milestone.id}
+              data-weight={milestone.weight}
               key={milestone.id}
             >
               <div className="science-milestone__year">{milestone.year}</div>

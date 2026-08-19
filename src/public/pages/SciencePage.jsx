@@ -15,8 +15,8 @@ const failureConditions = [
   'Insufficient clean signal',
 ]
 
-const implementationSlot = getMediaSlotById('SCI-HERO-DIAGRAM-01')
-const qualitySlot = getMediaSlotById('SCI-QUALITY-01')
+const implementationSlot = getMediaSlotById('SCI-HERO-01')
+const qualitySlot = getMediaSlotById('SCI-TIMELINE-UNCERTAINTY-01')
 const validationSlot = getMediaSlotById('SCI-VALIDATION-01')
 const publishedMilestones = scienceMilestones.filter((milestone) => milestone.sourceUrl)
 
