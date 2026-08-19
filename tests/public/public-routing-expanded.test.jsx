@@ -31,7 +31,7 @@ test.each([
   ['/science', /measurement problem is not/i],
   ['/impact', /first signal should not depend/i],
   ['/about', /harder to overclaim/i],
-  ['/journey', /not a real patient case/i],
+  ['/journey', /a result should have to earn its way onto the screen/i],
   ['/platform', /one signal is a fragment/i],
   ['/privacy', /privacy/i],
   ['/medical-disclaimer', /medical disclaimer/i],
