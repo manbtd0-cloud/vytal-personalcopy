@@ -45,11 +45,7 @@ export default function ScienceTimeline() {
                   >
                     {milestone.sourceLabel} <span aria-hidden="true">↗</span>
                   </a>
-                ) : (
-                  <p className="science-milestone__internal-note">
-                    Internal milestone — not a peer-reviewed research publication.
-                  </p>
-                )}
+                ) : null}
               </div>
 
               {slot ? <MediaFrame slot={slot} className="science-milestone__media" /> : null}

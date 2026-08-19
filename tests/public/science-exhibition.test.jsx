@@ -66,7 +66,7 @@ test('Science separates implementation mechanics, failure conditions and validat
   const validation = container.querySelector('[data-science-chapter="validation"]')
   expect(validation).toBeInTheDocument()
   expect(validation.querySelector('[data-media-slot="SCI-VALIDATION-01"]')).toBeInTheDocument()
-  expect(within(validation).getByText(/prototype/i)).toBeInTheDocument()
+  expect(within(validation).getByText('Current state: prototype.')).toBeInTheDocument()
   expect(within(validation).getByText(/not a diagnostic medical device/i)).toBeInTheDocument()
 })
 
