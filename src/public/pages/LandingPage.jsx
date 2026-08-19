@@ -1,5 +1,7 @@
 import HeroMediaChapter from '../components/home-reference/HeroMediaChapter.jsx'
 import AccessThesisChapter from '../components/home-reference/AccessThesisChapter.jsx'
+import ProofFieldChapter from '../components/home-reference/ProofFieldChapter.jsx'
+import ScienceLineageChapter from '../components/home-reference/ScienceLineageChapter.jsx'
 import CameraScienceSection from '../components/home/CameraScienceSection.jsx'
 import ProcessSection from '../components/home/ProcessSection.jsx'
 import ProductProofSection from '../components/home/ProductProofSection.jsx'
@@ -17,6 +19,8 @@ export default function LandingPage() {
     <div className="landing-page reference-home">
       <HeroMediaChapter />
       <AccessThesisChapter />
+      <ProofFieldChapter />
+      <ScienceLineageChapter />
       <CameraScienceSection />
       <ProcessSection />
       <ProductProofSection />
