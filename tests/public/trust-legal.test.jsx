@@ -50,7 +50,7 @@ test('Unknown public routes resolve to a useful branded 404 without capturing cl
     </MemoryRouter>,
   )
 
-  const notFound = await screen.findByRole('main', { name: /page not found/i })
+  const notFound = await screen.findByRole('region', { name: /page not found/i })
   expect(within(notFound).getByRole('heading', { level: 1, name: /page not found/i })).toBeInTheDocument()
   expect(within(notFound).getByRole('link', { name: /back to home/i })).toHaveAttribute('href', '/')
   expect(within(notFound).getByRole('link', { name: /start screening/i })).toHaveAttribute('href', '/scan')
