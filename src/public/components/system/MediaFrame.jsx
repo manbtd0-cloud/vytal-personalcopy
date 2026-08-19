@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import useReducedMotion from '../../hooks/useReducedMotion.js'
 
 function frameStatus(slot, mediaSrc) {
@@ -14,6 +15,7 @@ export default function MediaFrame({
   children,
 }) {
   const reducedMotion = useReducedMotion()
+  const videoRef = useRef(null)
   const mediaSrc = src ?? slot.src
   const mediaPoster = poster ?? slot.poster
   const mediaAlt = alt ?? slot.alt ?? ''
@@ -27,6 +29,45 @@ export default function MediaFrame({
     isViewport ? 'media-frame--viewport' : '',
     className,
   ].filter(Boolean).join(' ')
+
+  useEffect(() => {
+    const video = videoRef.current
+    if (!video || slot.kind !== 'video' || !mediaSrc) return undefined
+
+    const pause = () => video.pause()
+    const play = () => {
+      if (reducedMotion) {
+        pause()
+        return
+      }
+
+      const result = video.play()
+      result?.catch?.(() => {})
+    }
+
+    if (reducedMotion) {
+      pause()
+      return pause
+    }
+
+    if (typeof IntersectionObserver !== 'function') {
+      play()
+      return pause
+    }
+
+    const observer = new IntersectionObserver((entries) => {
+      const entry = entries.find((candidate) => candidate.target === video) ?? entries[0]
+      if (entry?.isIntersecting) play()
+      else pause()
+    }, { threshold: 0.15 })
+
+    observer.observe(video)
+
+    return () => {
+      observer.disconnect()
+      pause()
+    }
+  }, [mediaSrc, reducedMotion, slot.kind])
 
   return (
     <figure
@@ -44,13 +85,14 @@ export default function MediaFrame({
       <div className="media-frame__surface">
         {slot.kind === 'video' && mediaSrc ? (
           <video
+            ref={videoRef}
             src={mediaSrc}
             poster={mediaPoster || undefined}
             muted
             playsInline
-            autoPlay={!reducedMotion}
             loop={!reducedMotion}
             preload={slot.priority === 'high' ? 'metadata' : 'none'}
+            aria-label={mediaAlt || undefined}
           />
         ) : mediaSrc ? (
           <img
