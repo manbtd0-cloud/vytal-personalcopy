@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import LandingPage from '../../src/public/pages/LandingPage.jsx'
 
@@ -20,8 +20,15 @@ test('home connects individual readings to continuity, impact and science', () =
   expect(screen.getByText(/screen → save → explain → refer/i)).toBeInTheDocument()
   expect(screen.getByRole('link', { name: /see the wider impact/i })).toHaveAttribute('href', '/impact')
 
-  expect(
-    screen.getByRole('heading', { name: /the interface is simple\. the measurement problem is not/i }),
-  ).toBeInTheDocument()
-  expect(screen.getByRole('link', { name: /explore the science/i })).toHaveAttribute('href', '/science')
+  const legacyScienceHeading = screen.getByRole('heading', {
+    name: /the interface is simple\. the measurement problem is not/i,
+  })
+  expect(legacyScienceHeading).toBeInTheDocument()
+
+  const legacyScienceSection = legacyScienceHeading.closest('section')
+  expect(legacyScienceSection).not.toBeNull()
+  expect(within(legacyScienceSection).getByRole('link', { name: /explore the science/i })).toHaveAttribute(
+    'href',
+    '/science',
+  )
 })
