@@ -25,7 +25,7 @@ export default function PublicNav({ theme = 'dark' }) {
   useEffect(() => {
     if (!mobileOpen) return undefined
 
-    previousFocusRef.current = document.activeElement
+    previousFocusRef.current = menuButtonRef.current ?? document.activeElement
     const previousOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
 
