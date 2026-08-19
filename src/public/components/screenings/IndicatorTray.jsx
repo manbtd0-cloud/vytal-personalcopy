@@ -7,7 +7,7 @@ export default function IndicatorTray() {
       <nav className="screenings-indicator__nav" aria-label="Screening atlas sections">
         {screeningGroups.map((group, index) => (
           <a href={`#${screeningGroupId(group.title)}`} key={group.title}>
-            <span>{String(index + 1).padStart(2, '0')}</span>
+            <span aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
             <strong>{group.title}</strong>
           </a>
         ))}
