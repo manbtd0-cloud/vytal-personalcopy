@@ -1,4 +1,5 @@
-import HeroSection from '../components/home/HeroSection.jsx'
+import HeroMediaChapter from '../components/home-reference/HeroMediaChapter.jsx'
+import AccessThesisChapter from '../components/home-reference/AccessThesisChapter.jsx'
 import CameraScienceSection from '../components/home/CameraScienceSection.jsx'
 import ProcessSection from '../components/home/ProcessSection.jsx'
 import ProductProofSection from '../components/home/ProductProofSection.jsx'
@@ -13,8 +14,9 @@ import FinalCtaSection from '../components/home/FinalCtaSection.jsx'
 
 export default function LandingPage() {
   return (
-    <div className="landing-page">
-      <HeroSection />
+    <div className="landing-page reference-home">
+      <HeroMediaChapter />
+      <AccessThesisChapter />
       <CameraScienceSection />
       <ProcessSection />
       <ProductProofSection />
