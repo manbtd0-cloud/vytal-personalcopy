@@ -12,6 +12,21 @@ Condition v1.0. The Vytal repository uses those selected components only as
 part of this application/website and does not redistribute them as a standalone
 component library.
 
+### Retained adapted source files
+
+Current adapted ReactBits sources retained in `src/public/components/reactbits/`:
+
+- `CardSwap.jsx` — staged legacy Home product-proof interaction.
+- `Magnet.jsx` — staged legacy Home final CTA interaction.
+- `PixelTransition.jsx` — staged legacy Home AI explanation interaction.
+- `ScrollReveal.jsx` — reference Home access-thesis reveal.
+- `SplitText.jsx` — reference Home hero text reveal.
+- `SpotlightCard.jsx` — staged legacy Home screening-tile interaction.
+
+The staged legacy Home remains intentionally mounted during the current visual
+migration, so those legacy-listed files are still active dependencies rather
+than unused copies.
+
 Original license:
 https://github.com/DavidHDev/react-bits/blob/main/LICENSE.md
 
