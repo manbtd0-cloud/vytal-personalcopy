@@ -70,3 +70,50 @@ export const homeLanguageItems = SUPPORTED_LANGUAGES.map(({ code, name, label })
   name,
   label,
 }))
+
+export const homePlatformArcItems = [
+  {
+    id: 'camera',
+    index: '01',
+    title: 'CAMERA FIRST',
+    body: 'Begin with optical input from hardware already present in an ordinary phone.',
+    status: 'Current foundation',
+    mediaSlotId: 'HOME-ARC-CAMERA-01',
+    signalVariant: 'raw',
+  },
+  {
+    id: 'confidence',
+    index: '02',
+    title: 'CONFIDENCE AWARE',
+    body: 'Treat motion, lighting and signal quality as part of the result—not as invisible implementation detail.',
+    status: 'Current foundation',
+    mediaSlotId: 'HOME-ARC-CONFIDENCE-01',
+    signalVariant: 'trusted',
+  },
+  {
+    id: 'context',
+    index: '03',
+    title: 'CONTEXT OVER TIME',
+    body: 'Carry readings into history so repeated context can matter more than one isolated number.',
+    status: 'Platform direction',
+    mediaSlotId: 'HOME-ARC-CONTEXT-01',
+    signalVariant: 'timeline',
+  },
+  {
+    id: 'future',
+    index: '04',
+    title: 'BEYOND CAMERA',
+    body: 'BLE devices, thermal sensing and wearables are expansion paths being explored around the camera-first core.',
+    status: 'Research / future direction',
+    mediaSlotId: 'HOME-ARC-FUTURE-01',
+    signalVariant: 'network',
+  },
+]
+
+export const homeConcreteValueItems = [
+  { index: '01', title: 'Scan', body: 'Camera-derived signal + quality state' },
+  { index: '02', title: 'Result', body: 'Trusted screening output' },
+  { index: '03', title: 'Explanation', body: 'Understandable context' },
+  { index: '04', title: 'History', body: 'Repeated-reading context' },
+  { index: '05', title: 'Handoff', body: 'Information that can be carried forward' },
+]

@@ -9,6 +9,9 @@ import DocumentaryRunChapter from '../components/home-reference/DocumentaryRunCh
 import TrustResetChapter from '../components/home-reference/TrustResetChapter.jsx'
 import EvidenceVoicesChapter from '../components/home-reference/EvidenceVoicesChapter.jsx'
 import LanguageBandChapter from '../components/home-reference/LanguageBandChapter.jsx'
+import PlatformArcChapter from '../components/home-reference/PlatformArcChapter.jsx'
+import ConcreteValueChapter from '../components/home-reference/ConcreteValueChapter.jsx'
+import FinalEntryChapter from '../components/home-reference/FinalEntryChapter.jsx'
 import CameraScienceSection from '../components/home/CameraScienceSection.jsx'
 import ProcessSection from '../components/home/ProcessSection.jsx'
 import ProductProofSection from '../components/home/ProductProofSection.jsx'
@@ -35,6 +38,9 @@ export default function LandingPage() {
       <TrustResetChapter />
       <EvidenceVoicesChapter />
       <LanguageBandChapter />
+      <PlatformArcChapter />
+      <ConcreteValueChapter />
+      <FinalEntryChapter />
       <CameraScienceSection />
       <ProcessSection />
       <ProductProofSection />
