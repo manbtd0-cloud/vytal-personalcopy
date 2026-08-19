@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { render, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { expect, test } from 'vitest'
 import LandingPage from '../../src/public/pages/LandingPage.jsx'
@@ -23,5 +23,6 @@ test('reference Home opens with a cinematic sensing chapter and sparse access th
   expect(heroQueries.getByText(/your camera sees it/i)).toBeInTheDocument()
   expect(heroQueries.getByRole('link', { name: /scroll to reveal/i })).toHaveAttribute('href', '#access-thesis')
 
-  expect(within(access).getByText(/a useful first health signal should not have to wait for perfect access/i)).toBeInTheDocument()
+  const statement = within(access).getByRole('heading', { level: 2 })
+  expect(statement).toHaveTextContent('A useful first health signal should not have to wait for perfect access.')
 })
