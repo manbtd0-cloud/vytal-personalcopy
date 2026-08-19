@@ -2,9 +2,11 @@ import MediaFrame from '../components/system/MediaFrame.jsx'
 import SectionThemeBoundary from '../components/system/SectionThemeBoundary.jsx'
 import SignalThread from '../components/system/SignalThread.jsx'
 import ScienceTimeline from '../components/science/ScienceTimeline.jsx'
+import ScienceResearchBranches, { ScienceClaimBoundaries } from '../components/science/ScienceResearchBranches.jsx'
 import { scienceMilestones } from '../content/science.js'
 import { getMediaSlotById } from '../content/mediaSlots.js'
 import '../styles/science-exhibition.css'
+import '../styles/science-research-branches.css'
 
 const failureConditions = [
   'Motion',
@@ -68,6 +70,8 @@ export default function SciencePage() {
         </div>
       </SectionThemeBoundary>
 
+      <ScienceResearchBranches />
+
       <SectionThemeBoundary
         theme="coral"
         as="section"
@@ -89,6 +93,8 @@ export default function SciencePage() {
           </ol>
         </div>
       </SectionThemeBoundary>
+
+      <ScienceClaimBoundaries />
 
       <SectionThemeBoundary
         theme="dark"
