@@ -37,7 +37,7 @@ function std(arr) {
 
 /**
  * Estimate blood oxygen saturation (SpO2) from raw RGB channel traces
- * 
+ *
  * @param {number[]} redTrace - array of raw red channel intensities
  * @param {number[]} greenTrace - array of raw green channel intensities (strongest PPG AC component)
  * @param {boolean} isReliable - uncertainty reliability flag

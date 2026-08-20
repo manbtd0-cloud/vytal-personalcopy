@@ -34,7 +34,8 @@ export default function SplashAnimation({ onFinish }) {
       style={{ cursor: 'pointer' }}
     >
       <div className="splash-card">
-        <div className="splash-logo-box">
+        <div className="splash-index">VYTAL / HEALTH, IN VIEW</div>
+        <div className="splash-logo-box" aria-hidden="true">
           <svg
             width="120"
             height="120"
@@ -44,7 +45,7 @@ export default function SplashAnimation({ onFinish }) {
           >
             <path
               d="M 15 50 L 35 50 L 45 20 L 58 80 L 70 42 L 80 50 L 95 50"
-              stroke="#ff4d5e"
+              stroke="currentColor"
               strokeWidth="4.5"
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -54,8 +55,8 @@ export default function SplashAnimation({ onFinish }) {
         </div>
         <div className={`splash-text ${stage === 'title' || stage === 'fadeout' ? 'show' : ''}`}>
           <h1 className="splash-brand">VYTAL</h1>
-          <p className="splash-sub">Camera-Based Vitals & AI Triage</p>
-          <span className="splash-skip-hint">Click anywhere to skip</span>
+          <p className="splash-sub">A clearer, more personal way to read everyday health signals.</p>
+          <span className="splash-skip-hint">Tap anywhere to enter</span>
         </div>
       </div>
     </div>

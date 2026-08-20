@@ -1,14 +1,28 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { getStoredRecords, syncPendingRecords } from '../lib/storage'
-import { generateSparklinePath, evaluateLongitudinalRisk } from '../lib/longitudinalRisk'
-import { syncQueueToAlibabaCloud } from '../lib/cloudSync'
+import { referralRepository, screeningRepository } from '../domain/repositories.js'
+import { REFERRAL_STEPS, ReferralPriorityQueue, referralWorkflow } from '../domain/referrals/ReferralWorkflow.js'
+import { networkMonitor } from '../services/NetworkMonitor.js'
+import { clinicalRealtimeService } from '../services/ClinicalRealtimeService.js'
+import { clinicalCommandOutbox } from '../services/ClinicalCommandOutbox.js'
+import { evaluateLongitudinalRisk } from '../lib/longitudinalRisk.js'
 
 const STATUS_META = {
   flagged: { label: 'Needs follow-up', className: 'pill--flag' },
   ok: { label: 'Normal', className: 'pill--ok' },
   pending: { label: 'Pending sync', className: 'pill--pending' },
 }
+
+const REFERRAL_LABELS = {
+  flagged: 'Flagged',
+  referred: 'Referred',
+  contacted: 'Contacted',
+  appointment_booked: 'Appointment',
+  completed: 'Completed',
+  cancelled: 'Cancelled',
+}
+
+const RECORD_PAGE_SIZE = 25
 
 function formatTimeAgo(isoString) {
   if (!isoString) return 'Just now'
@@ -21,29 +35,161 @@ function formatTimeAgo(isoString) {
   return `${Math.floor(hrs / 24)} days ago`
 }
 
+function screeningModeLabel(record) {
+  const mode = record.mode || record.source || 'face'
+  const labels = {
+    face: 'Face rPPG', fingertip: 'Fingertip PPG', anemia: 'Anemia proxy',
+    jaundice: 'Jaundice proxy', bmi: 'BMI proxy', bp_ptt: 'BP trend',
+  }
+  return labels[mode] || String(mode).replaceAll('_', ' ')
+}
+
+function primaryMeasurement(record) {
+  const hasNumber = (value) => value !== null && value !== '' && Number.isFinite(Number(value))
+  if (hasNumber(record.anemiaResult?.hb)) return `${record.anemiaResult.hb} g/dL Hb proxy`
+  if (hasNumber(record.jaundiceResult?.yellowIndex)) return `${record.jaundiceResult.yellowIndex} yellow index`
+  if (hasNumber(record.bmiResult?.bmi)) return `${record.bmiResult.bmi} kg/m²`
+  if (record.bpResult?.isCalibrated) return `${record.bpResult.sbp}/${record.bpResult.dbp} mmHg trend`
+  if (hasNumber(record.hr)) return `${record.hr} bpm`
+  return 'No reliable result'
+}
+
 export default function DashboardPage() {
   const [records, setRecords] = useState([])
+  const [referrals, setReferrals] = useState([])
   const [searchTerm, setSearchTerm] = useState('')
   const [filterStatus, setFilterStatus] = useState('all')
   const [isSyncing, setIsSyncing] = useState(false)
+  const [loadError, setLoadError] = useState('')
+  const [updatingReferral, setUpdatingReferral] = useState('')
+  const [isOnline, setIsOnline] = useState(networkMonitor.online)
+  const [recordCursor, setRecordCursor] = useState(null)
+  const [hasMoreRecords, setHasMoreRecords] = useState(false)
+  const [loadingMoreRecords, setLoadingMoreRecords] = useState(false)
   const navigate = useNavigate()
 
   useEffect(() => {
-    setRecords(getStoredRecords())
+    let active = true
+    Promise.all([screeningRepository.listPage({ limit: RECORD_PAGE_SIZE }), referralRepository.list()])
+      .then(([recordPage, referralItems]) => {
+        if (!active) return
+        setRecords(recordPage.items)
+        setRecordCursor(recordPage.nextCursor)
+        setHasMoreRecords(recordPage.hasMore)
+        setReferrals(referralItems)
+      })
+      .catch((error) => active && setLoadError(error.message))
+    return () => { active = false }
+  }, [])
+
+  useEffect(() => networkMonitor.subscribe((online) => {
+    setIsOnline(online)
+    if (!online || !clinicalCommandOutbox.size) return
+    clinicalCommandOutbox.flush()
+      .then(() => referralRepository.list())
+      .then(setReferrals)
+      .catch((error) => setLoadError(`Queued update could not sync: ${error.message}`))
+  }), [])
+
+  useEffect(() => {
+    let active = true
+    let unsubscribe = () => {}
+    let refreshTimer = null
+    const refresh = () => {
+      clearTimeout(refreshTimer)
+      refreshTimer = setTimeout(() => {
+        Promise.all([screeningRepository.listPage({ limit: RECORD_PAGE_SIZE }), referralRepository.list()])
+          .then(([recordPage, referralItems]) => {
+            if (!active) return
+            setRecords(recordPage.items)
+            setRecordCursor(recordPage.nextCursor)
+            setHasMoreRecords(recordPage.hasMore)
+            setReferrals(referralItems)
+          })
+          .catch((error) => active && setLoadError(error.message))
+      }, 150)
+    }
+
+    clinicalRealtimeService.subscribe(refresh)
+      .then((cleanup) => {
+        if (!active) cleanup()
+        else unsubscribe = cleanup
+      })
+      .catch(() => {})
+
+    return () => {
+      active = false
+      clearTimeout(refreshTimer)
+      unsubscribe()
+    }
   }, [])
 
   async function handleSyncAll() {
     setIsSyncing(true)
-    await syncQueueToAlibabaCloud()
-    const updated = syncPendingRecords()
-    setRecords(updated)
-    setIsSyncing(false)
+    setLoadError('')
+    try {
+      await screeningRepository.sync()
+      const page = await screeningRepository.listPage({ limit: RECORD_PAGE_SIZE })
+      setRecords(page.items)
+      setRecordCursor(page.nextCursor)
+      setHasMoreRecords(page.hasMore)
+    } catch (error) {
+      setLoadError(error.message)
+    } finally {
+      setIsSyncing(false)
+    }
   }
 
+  async function loadMoreRecords() {
+    if (!recordCursor || loadingMoreRecords) return
+    setLoadingMoreRecords(true)
+    setLoadError('')
+    try {
+      const page = await screeningRepository.listPage({ limit: RECORD_PAGE_SIZE, cursor: recordCursor })
+      setRecords((current) => {
+        const existingIds = new Set(current.map((record) => record.id))
+        return [...current, ...page.items.filter((record) => !existingIds.has(record.id))]
+      })
+      setRecordCursor(page.nextCursor)
+      setHasMoreRecords(page.hasMore)
+    } catch (error) {
+      setLoadError(error.message)
+    } finally {
+      setLoadingMoreRecords(false)
+    }
+  }
+
+  async function advanceReferral(referral) {
+    const nextStatus = referralWorkflow.next(referral.status)
+    if (!nextStatus) return
+    if (!isOnline) {
+      try {
+        const queued = clinicalCommandOutbox.enqueueReferralTransition(referral.id, nextStatus)
+        setLoadError(`Offline: referral update queued in memory (${queued} pending). It will sync after reconnection.`)
+      } catch (error) {
+        setLoadError(error.message)
+      }
+      return
+    }
+    setUpdatingReferral(referral.id)
+    setLoadError('')
+    try {
+      const updated = await referralRepository.transition(referral.id, nextStatus)
+      setReferrals((current) => current.map((item) => item.id === referral.id
+        ? { ...item, ...updated }
+        : item))
+    } catch (error) {
+      setLoadError(error.message)
+    } finally {
+      setUpdatingReferral('')
+    }
+  }
+
+  const normalizedSearch = searchTerm.trim().toLowerCase()
   const filtered = records.filter((r) => {
     const matchesSearch =
-      r.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      r.patientId.toLowerCase().includes(searchTerm.toLowerCase())
+      String(r.name ?? '').toLowerCase().includes(normalizedSearch) ||
+      String(r.patientId ?? '').toLowerCase().includes(normalizedSearch)
     if (filterStatus === 'all') return matchesSearch
     if (filterStatus === 'flagged') return matchesSearch && r.status === 'flagged'
     if (filterStatus === 'pending') return matchesSearch && (!r.synced || r.status === 'pending')
@@ -51,20 +197,35 @@ export default function DashboardPage() {
     return matchesSearch
   })
 
-  const summary = {
-    total: records.length,
-    flagged: records.filter((r) => r.status === 'flagged' || r.alertTier === 'RED' || r.alertTier === 'ORANGE').length,
-    pending: records.filter((r) => !r.synced || r.status === 'pending').length,
+  const summary = records.reduce((result, record) => {
+    if (record.status === 'flagged') result.flagged++
+    if (!record.synced || record.status === 'pending') result.pending++
+    return result
+  }, { total: records.length, flagged: 0, pending: 0, activeReferrals: 0 })
+  for (const referral of referrals) {
+    if (!['completed', 'cancelled'].includes(referral.status)) summary.activeReferrals++
+  }
+  const triageReferrals = new ReferralPriorityQueue(referrals).toSortedArray()
+  const historiesByPatient = records.reduce((groups, record) => {
+    const key = record.patientDatabaseId || record.patientId
+    const current = groups.get(key) || []
+    current.push(record)
+    groups.set(key, current)
+    return groups
+  }, new Map())
+  for (const history of historiesByPatient.values()) {
+    history.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))
   }
 
   return (
     <main className="page dashboard-page">
       <div className="dashboard-header">
         <div>
-          <p className="eyebrow">Community health worker</p>
-          <h1 className="page-title">Every patient you've checked.</h1>
+          <p className="eyebrow">Patient overview / live register</p>
+          <h1 className="page-title">The day, at a glance.</h1>
           <p className="page-subtitle">
-            Last reading, stress read-out, longitudinal trends, and who's waiting on a follow-up — all in one glance.
+            See every screening, surface the people who need attention, and keep records moving even
+            when the network does not.
           </p>
         </div>
 
@@ -83,29 +244,104 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {loadError && <p className="form-message" role="alert">{loadError}</p>}
+      {!isOnline && <div className="preview-banner" role="status">Offline mode: current data remains visible; protected updates resume after reconnection.</div>}
+
       <div className="stat-row">
-        <div className="card stat-card" onClick={() => setFilterStatus('all')} style={{ cursor: 'pointer' }}>
+        <button
+          type="button"
+          className={`card stat-card ${filterStatus === 'all' ? 'is-selected' : ''}`}
+          onClick={() => setFilterStatus('all')}
+        >
+          <span className="stat-card__index mono">01 / TOTAL</span>
           <p className="stat-card__value mono">{summary.total}</p>
           <p className="stat-card__label">Screened total</p>
-        </div>
-        <div className="card stat-card stat-card--flag" onClick={() => setFilterStatus('flagged')} style={{ cursor: 'pointer' }}>
+          <span className="stat-card__note">Protected account records</span>
+        </button>
+        <button
+          type="button"
+          className={`card stat-card stat-card--flag ${filterStatus === 'flagged' ? 'is-selected' : ''}`}
+          onClick={() => setFilterStatus('flagged')}
+        >
+          <span className="stat-card__index mono">02 / ACTION</span>
           <p className="stat-card__value mono">{summary.flagged}</p>
           <p className="stat-card__label">Need follow-up</p>
-        </div>
-        <div className="card stat-card stat-card--pending" onClick={() => setFilterStatus('pending')} style={{ cursor: 'pointer' }}>
-          <p className="stat-card__value mono">{summary.pending}</p>
-          <p className="stat-card__label">Pending sync</p>
-        </div>
+          <span className="stat-card__note">Review priority cases</span>
+        </button>
+        <button
+          type="button"
+          className="card stat-card stat-card--pending"
+          onClick={() => document.getElementById('referral-workflow')?.scrollIntoView({ behavior: 'smooth' })}
+        >
+          <span className="stat-card__index mono">03 / REFERRALS</span>
+          <p className="stat-card__value mono">{summary.activeReferrals}</p>
+          <p className="stat-card__label">Active follow-ups</p>
+          <span className="stat-card__note">Tracked through completion</span>
+        </button>
       </div>
 
+      <section id="referral-workflow" className="referral-workflow" aria-labelledby="referral-heading">
+        <div className="referral-workflow__heading">
+          <div>
+            <span className="panel-index">CARE LOOP / LIVE</span>
+            <h2 id="referral-heading">Referral follow-up</h2>
+          </div>
+          <span className="mono">{summary.activeReferrals.toString().padStart(2, '0')} ACTIVE</span>
+        </div>
+        <div className="referral-grid">
+          {triageReferrals.slice(0, 6).map((referral) => {
+            const currentIndex = referralWorkflow.index(referral.status)
+            const nextStatus = referralWorkflow.next(referral.status)
+            return (
+              <article className={`card referral-card referral-card--${referral.priority}`} key={referral.id}>
+                <div className="referral-card__top">
+                  <div>
+                    <span className="mono">{referral.patient?.patient_code || 'PATIENT'}</span>
+                    <h3>{referral.patient?.full_name || 'Protected patient'}</h3>
+                  </div>
+                  <span className={`pill ${referral.status === 'completed' ? 'pill--ok' : referral.priority === 'urgent' ? 'pill--flag' : 'pill--pending'}`}>
+                    <span className="pill-dot" /> {referral.status === 'completed' ? 'Completed' : referral.priority}
+                  </span>
+                </div>
+                <p className="referral-card__reason">{referral.reason}</p>
+                <ol className="referral-track" aria-label={`Referral status: ${REFERRAL_LABELS[referral.status]}`}>
+                  {REFERRAL_STEPS.map((step, index) => (
+                    <li className={index < currentIndex ? 'is-done' : index === currentIndex ? 'is-current' : ''} key={step}>
+                      <span />
+                      <small>{REFERRAL_LABELS[step]}</small>
+                    </li>
+                  ))}
+                </ol>
+                <div className="referral-card__action">
+                  <span>Current: <strong>{REFERRAL_LABELS[referral.status]}</strong></span>
+                  {nextStatus && (
+                    <button className="btn btn--primary" onClick={() => advanceReferral(referral)} disabled={updatingReferral === referral.id}>
+                      {updatingReferral === referral.id ? 'Updating…' : `Mark ${REFERRAL_LABELS[nextStatus]}`}
+                    </button>
+                  )}
+                </div>
+              </article>
+            )
+          })}
+          {referrals.length === 0 && <div className="card empty-state referral-empty">No referrals yet. A flagged linked screening will appear here automatically.</div>}
+        </div>
+      </section>
+
       <div className="table-filter-bar">
-        <input
-          type="text"
-          placeholder="Search by patient name or ID..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="search-input"
-        />
+        <label className="search-control">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="11" cy="11" r="6" />
+            <path d="m16 16 4 4" />
+          </svg>
+          <span className="sr-only">Search patients</span>
+          <input
+            type="text"
+            placeholder="Search patient name or ID"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="search-input"
+          />
+        </label>
 
         <div className="filter-buttons">
           {['all', 'flagged', 'pending', 'ok'].map((st) => (
@@ -127,13 +363,20 @@ export default function DashboardPage() {
       </div>
 
       <div className="card patient-table-card">
+        <div className="patient-table-card__heading">
+          <div>
+            <span className="panel-index">REGISTER / TODAY</span>
+            <p>Screening records</p>
+          </div>
+          <span className="mono">{filtered.length.toString().padStart(2, '0')} shown</span>
+        </div>
         <table className="patient-table">
           <thead>
             <tr>
               <th>Patient</th>
-              <th>Heart rate</th>
-              <th>Breathing</th>
-              <th>Trend (Sparkline)</th>
+              <th>Screening</th>
+              <th>Primary result</th>
+              <th>Recent trend</th>
               <th>Status</th>
               <th>Last checked</th>
               <th>Report</th>
@@ -149,16 +392,12 @@ export default function DashboardPage() {
             ) : (
               filtered.map((p) => {
                 const meta = STATUS_META[p.status] || STATUS_META.ok
-                // Collect patient history for sparkline
-                const patientScans = records.filter((r) => r.patientId === p.patientId || r.name === p.name)
-                const hrHistory = patientScans.map((r) => r.hr).reverse()
-                const sparkPath = generateSparklinePath(hrHistory.length > 1 ? hrHistory : [p.hr - 3, p.hr + 2, p.hr])
-                const longRisk = evaluateLongitudinalRisk(patientScans)
-
+                const history = historiesByPatient.get(p.patientDatabaseId || p.patientId) || []
+                const trend = evaluateLongitudinalRisk(history, { tier: p.alertTier || 'GREEN' })
                 return (
                   <tr
                     key={p.id}
-                    className={p.status === 'flagged' || p.alertTier === 'RED' ? 'is-flagged' : undefined}
+                    className={p.status === 'flagged' ? 'is-flagged' : undefined}
                     onClick={() => navigate(`/report?id=${p.id}`)}
                     style={{ cursor: 'pointer' }}
                   >
@@ -166,22 +405,13 @@ export default function DashboardPage() {
                       <p className="patient-table__name">{p.name}</p>
                       <p className="patient-table__id mono">{p.patientId || p.id}</p>
                     </td>
-                    <td className="mono">{p.hr} bpm</td>
-                    <td className="mono">{p.br || 16} br/min</td>
-                    <td>
-                      <svg width="80" height="24" style={{ overflow: 'visible' }}>
-                        <polyline
-                          fill="none"
-                          stroke={p.status === 'flagged' ? '#ef4444' : '#10b981'}
-                          strokeWidth="2"
-                          points={sparkPath}
-                        />
-                      </svg>
-                    </td>
+                    <td>{screeningModeLabel(p)}</td>
+                    <td className="mono">{primaryMeasurement(p)}</td>
+                    <td title={trend.message}>{trend.trendTier ? trend.trendLabel : 'Needs 3 visits'}</td>
                     <td>
                       <span className={'pill ' + (!p.synced ? STATUS_META.pending.className : meta.className)}>
                         <span className="pill-dot" />
-                        {p.alertTier ? `Tier ${p.alertTier}` : (!p.synced ? 'Pending sync' : meta.label)}
+                        {!p.synced ? 'Pending sync' : meta.label}
                       </span>
                     </td>
                     <td className="patient-table__time">{formatTimeAgo(p.timestamp)}</td>
@@ -200,6 +430,14 @@ export default function DashboardPage() {
             )}
           </tbody>
         </table>
+        {hasMoreRecords && (
+          <div className="referral-card__action">
+            <span>Showing the newest {records.length} records</span>
+            <button className="btn btn--ghost" type="button" onClick={loadMoreRecords} disabled={loadingMoreRecords}>
+              {loadingMoreRecords ? 'Loading…' : 'Load older records'}
+            </button>
+          </div>
+        )}
       </div>
     </main>
   )

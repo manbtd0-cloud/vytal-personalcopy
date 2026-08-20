@@ -6,14 +6,24 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "security:check": "node scripts/security-check.mjs",
+    "backend:check": "node scripts/backend-contract-check.mjs",
+    "performance:check": "node scripts/performance-contract-check.mjs",
+    "cs:check": "node scripts/cs-architecture-check.mjs",
+    "test:unit": "node --test tests/unit/*.test.js",
+    "test:integration": "node --test tests/integration/*.test.js",
+    "benchmark:dsa": "node scripts/benchmark-dsa.mjs",
+    "performance:load": "node scripts/load-test.mjs",
+    "verify": "npm run security:check && npm run backend:check && npm run performance:check && npm run cs:check && npm run test:unit && npm run test:integration && npm run build"
   },
   "dependencies": {
     "@mediapipe/tasks-vision": "^1.0.1",
+    "@supabase/supabase-js": "^2.112.3",
     "qrcode": "^1.5.4",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-router-dom": "^6.26.0"
+    "react-router-dom": "^7.18.2"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.1",

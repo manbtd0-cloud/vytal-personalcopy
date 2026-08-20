@@ -5,7 +5,7 @@
 
 /**
  * Estimate Body Mass Index (BMI) and malnutrition category from body framing proportions.
- * 
+ *
  * @param {number} shoulderToHeightRatio - Ratio of shoulder width to total frame height
  * @param {number} heightCm - Patient reported or estimated height in cm (default 165)
  * @returns {{ bmi: number, category: string, tier: 'RED'|'ORANGE'|'GREEN', recommendation: string }}

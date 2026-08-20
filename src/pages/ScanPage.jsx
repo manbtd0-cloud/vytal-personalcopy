@@ -1,9 +1,12 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Link } from 'react-router-dom'
-import { FaceLandmarker, FilesetResolver } from '@mediapipe/tasks-vision'
-import { analyzeSignal } from '../lib/rppg'
+import { Link, useSearchParams } from 'react-router-dom'
 import { fetchAIExplanation, SUPPORTED_LANGUAGES, getStressLabel } from '../lib/ai'
-import { saveRecord, getStoredRecords } from '../lib/storage'
+import { patientRepository, screeningRepository } from '../domain/repositories.js'
+import { CircularBuffer } from '../core/CircularBuffer.js'
+import { ScanStrategyFactory } from '../domain/scanning/ScanStrategy.js'
+import { signalAnalysisService } from '../services/SignalAnalysisService.js'
+import { createQualityMask } from '../lib/qualityFlags.js'
+import BioSignalVisual from '../components/BioSignalVisual.jsx'
 import {
   assessCameraQuality,
   estimateUncertainty,
@@ -11,27 +14,25 @@ import {
   inferMotionTier,
   inferSkinToneTier,
 } from '../lib/uncertainty'
-import { estimateSpO2 } from '../lib/spo2'
-import { checkIrregularRhythm } from '../lib/afib'
-import { evaluateAlertScale, AGE_GROUPS, PROGRAMME_CONTEXTS } from '../lib/alertScale'
-import { analyzeConjunctivalPallor } from '../lib/anemia'
-import { analyzeScleralIcterus } from '../lib/jaundice'
-import { estimateBloodPressurePTT, saveBpCalibration } from '../lib/bloodPressurePTT'
-import { estimateMalnutritionBMI } from '../lib/bmiEstimate'
-import { evaluatePopulationAnomaly } from '../lib/populationAnomaly'
-import { connectBlePulseOximeter } from '../lib/bleOximeter'
-import { connectThermalCamera } from '../lib/thermalCamera'
-import { syncWearableHrvBaseline } from '../lib/wearableIntegration'
-import { speakExplanation } from '../lib/platform'
+import { estimateSpO2 } from '../lib/spo2.js'
+import { checkIrregularRhythm } from '../lib/afib.js'
+import { AGE_GROUPS, PROGRAMME_CONTEXTS } from '../lib/alertScale.js'
+import { analyzeConjunctivalPallor } from '../lib/anemia.js'
+import { analyzeScleralIcterus } from '../lib/jaundice.js'
+import { estimateBloodPressurePTT } from '../lib/bloodPressurePTT.js'
+import { estimateMalnutritionBMI } from '../lib/bmiEstimate.js'
+import { clinicalRiskPolicy } from '../domain/clinical/ClinicalRiskPolicy.js'
 
 const MODES = [
   { id: 'face', label: 'Face scan', hint: 'Hold the phone at arm’s length with your face centered in the guide oval.' },
   { id: 'fingertip', label: 'Fingertip + flash', hint: 'Cover the rear camera lens and flash completely with your fingertip.' },
-  { id: 'anemia', label: 'Anemia screening', hint: 'Pull down lower eyelid to expose pink conjunctival tissue inside guide.' },
-  { id: 'jaundice', label: 'Jaundice screening', hint: 'Look straight ahead so white of eye (sclera) is clearly visible.' },
-  { id: 'bp_ptt', label: 'BP (PTT)', hint: 'Hold still like a face scan — this reads your pulse waveform shape, calibrated against your own saved baseline.' },
-  { id: 'bmi', label: 'BMI / Malnutrition', hint: 'Align upper body inside frame to estimate shoulder-to-height ratio.' },
+  { id: 'anemia', label: 'Anemia', hint: 'Pull down the lower eyelid so the pink conjunctiva is visible inside the guide.' },
+  { id: 'jaundice', label: 'Jaundice', hint: 'Look straight ahead in even light so the white of the eye is visible.' },
+  { id: 'bp_ptt', label: 'BP trend', hint: 'Use the face guide. This is a calibrated pulse-wave trend, not a cuff measurement.' },
+  { id: 'bmi', label: 'BMI / nutrition', hint: 'Align the face and upper shoulders in the guide for a rough anthropometric proxy.' },
 ]
+
+const VISUAL_MODES = new Set(['anemia', 'jaundice', 'bmi'])
 
 const READOUT_FIELDS = [
   { key: 'hr', label: 'Heart rate', unit: 'bpm' },
@@ -40,72 +41,48 @@ const READOUT_FIELDS = [
 ]
 
 const SCAN_DURATION_MS = 15000
+const MAX_CAPTURE_SAMPLES = 900
+const MAX_QUALITY_SAMPLES = 120
 const MODEL_ASSET_URL =
   'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task'
 const WASM_URL = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision/wasm'
+let visionTasksPromise
 
-// Anthropometric BMI/malnutrition proxy: uses the already-loaded
-// FaceLandmarker (no second pose-detection model — adding one blind,
-// with no way to test it against a live camera in this environment, is
-// a real regression risk for a hackathon-stage app) to get a real face
-// bounding-box width, then applies a standard anthropometric ratio
-// (adult shoulder width ≈ 2.0-2.2x bizygomatic face width — Tilley &
-// Associates' "The Measure of Man and Woman" and similar anthropometry
-// references) to approximate shoulder width, giving a real
-// shoulder-to-frame-height ratio instead of a hardcoded constant.
-// HONEST LIMITATION: this varies meaningfully by individual build,
-// clothing bulk, and camera angle — it is a rough population-screening
-// proxy, not an individual-precision measurement, same caveat the
-// existing shoulder-to-height-ratio design already implied.
-const SHOULDER_TO_FACE_WIDTH_RATIO = 2.1
+const RIGHT_EYE_INDICES = [33, 7, 163, 144, 145, 153, 154, 155, 133, 173, 157, 158, 159, 160, 161, 246]
 
-function estimateShoulderToHeightRatio(landmarkResult, videoWidth, videoHeight) {
-  const face = landmarkResult?.faceLandmarks?.[0]
-  if (!face || !videoWidth || !videoHeight) return null
-  let minX = Infinity, maxX = -Infinity
-  for (const pt of face) {
-    if (pt.x < minX) minX = pt.x
-    if (pt.x > maxX) maxX = pt.x
-  }
-  const faceWidthNorm = maxX - minX // normalized 0-1 fraction of frame width
-  if (!faceWidthNorm || faceWidthNorm <= 0) return null
-  const estimatedShoulderWidthNorm = faceWidthNorm * SHOULDER_TO_FACE_WIDTH_RATIO
-  // Convert from "fraction of frame width" to "fraction of frame height"
-  // (pixel-accurate, since frame width != frame height for typical camera
-  // aspect ratios) — this is what keeps the ratio meaningful and matches
-  // what estimateMalnutritionBMI expects (shoulder width / frame height).
-  const shoulderWidthPx = estimatedShoulderWidthNorm * videoWidth
-  return shoulderWidthPx / videoHeight
+function scanDuration(mode) {
+  return VISUAL_MODES.has(mode) ? 4000 : SCAN_DURATION_MS
 }
 
-// Visual framing guide for BMI mode — a box roughly showing where the
-// shoulders should sit, sized from the same face-width-based anthropometric
-// estimate used for the actual measurement (see estimateShoulderToHeightRatio
-// above), so what the user sees lines up with what's actually being measured.
-function getShoulderGuideRoi(landmarkResult, videoWidth, videoHeight) {
+function getEyeRoi(landmarkResult, width, height, conjunctiva = false) {
   const face = landmarkResult?.faceLandmarks?.[0]
-  if (!face || !videoWidth || !videoHeight) return null
-  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity
-  for (const pt of face) {
-    if (pt.x < minX) minX = pt.x
-    if (pt.x > maxX) maxX = pt.x
-    if (pt.y < minY) minY = pt.y
-    if (pt.y > maxY) maxY = pt.y
-  }
-  const faceWidthNorm = maxX - minX
-  const faceHeightNorm = maxY - minY
-  if (!faceWidthNorm || !faceHeightNorm) return null
-
-  const shoulderWidthNorm = faceWidthNorm * SHOULDER_TO_FACE_WIDTH_RATIO
-  const centerXNorm = (minX + maxX) / 2
-  const shoulderTopYNorm = maxY + faceHeightNorm * 0.4 // just below the chin/neck
-
+  if (!face || !width || !height) return null
+  const points = RIGHT_EYE_INDICES.map((index) => face[index]).filter(Boolean)
+  if (points.length === 0) return null
+  const minX = Math.min(...points.map((point) => point.x))
+  const maxX = Math.max(...points.map((point) => point.x))
+  const minY = Math.min(...points.map((point) => point.y))
+  const maxY = Math.max(...points.map((point) => point.y))
+  const eyeW = maxX - minX
+  const eyeH = maxY - minY
+  const raw = conjunctiva
+    ? { x: minX + eyeW * 0.1, y: maxY, w: eyeW * 0.8, h: eyeH * 0.9 }
+    : { x: minX - eyeW * 0.15, y: minY - eyeH * 0.25, w: eyeW * 1.3, h: eyeH * 1.5 }
   return {
-    x: Math.round((centerXNorm - shoulderWidthNorm / 2) * videoWidth),
-    y: Math.round(shoulderTopYNorm * videoHeight),
-    w: Math.round(shoulderWidthNorm * videoWidth),
-    h: Math.round(faceHeightNorm * 1.2 * videoHeight),
+    x: Math.max(0, Math.round(raw.x * width)),
+    y: Math.max(0, Math.round(raw.y * height)),
+    w: Math.max(1, Math.min(width, Math.round(raw.w * width))),
+    h: Math.max(1, Math.min(height, Math.round(raw.h * height))),
   }
+}
+
+function estimateShoulderToHeightRatio(landmarkResult, width, height) {
+  const face = landmarkResult?.faceLandmarks?.[0]
+  if (!face || !width || !height) return null
+  const minX = Math.min(...face.map((point) => point.x))
+  const maxX = Math.max(...face.map((point) => point.x))
+  const faceWidthPx = (maxX - minX) * width
+  return faceWidthPx > 0 ? (faceWidthPx * 2.1) / height : null
 }
 
 function getForeheadRoi(landmarkResult, width, height) {
@@ -128,84 +105,6 @@ function getForeheadRoi(landmarkResult, width, height) {
   }
 }
 
-// MediaPipe FaceLandmarker canonical right-eye contour indices (FACEMESH_RIGHT_EYE).
-// Used to track the actual eye position/size instead of a fixed screen-space box,
-// so anemia/jaundice ROIs follow the subject regardless of distance, framing, or head pose.
-const RIGHT_EYE_INDICES = [33, 7, 163, 144, 145, 153, 154, 155, 133, 173, 157, 158, 159, 160, 161, 246]
-
-function getEyeBoundsNorm(landmarkResult) {
-  const face = landmarkResult?.faceLandmarks?.[0]
-  if (!face) return null
-  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity
-  for (const idx of RIGHT_EYE_INDICES) {
-    const pt = face[idx]
-    if (!pt) continue
-    if (pt.x < minX) minX = pt.x
-    if (pt.x > maxX) maxX = pt.x
-    if (pt.y < minY) minY = pt.y
-    if (pt.y > maxY) maxY = pt.y
-  }
-  if (minX === Infinity) return null
-  return { minX, maxX, minY, maxY }
-}
-
-// Sclera / whole-eye ROI for jaundice — landmark-bounded eye region with a
-// small outward margin, replacing the old fixed { x:50, y:50, w:200, h:100 }
-// screen-position box that ignored where the eye actually was.
-function getScleraRoi(landmarkResult, width, height) {
-  const b = getEyeBoundsNorm(landmarkResult)
-  if (!b) return null
-  const eyeW = b.maxX - b.minX
-  const eyeH = b.maxY - b.minY
-  const marginX = eyeW * 0.15
-  const marginY = eyeH * 0.25
-  return {
-    x: Math.round((b.minX - marginX) * width),
-    y: Math.round((b.minY - marginY) * height),
-    w: Math.round((eyeW + marginX * 2) * width),
-    h: Math.round((eyeH + marginY * 2) * height),
-  }
-}
-
-// Lower-conjunctiva ROI for anemia — the strip just below the lower eyelid
-// margin, matching the "pull down lower eyelid" capture guidance shown in
-// the UI, instead of the old fixed screen-position box.
-function getConjunctivaRoi(landmarkResult, width, height) {
-  const b = getEyeBoundsNorm(landmarkResult)
-  if (!b) return null
-  const eyeW = b.maxX - b.minX
-  const eyeH = b.maxY - b.minY
-  return {
-    x: Math.round((b.minX + eyeW * 0.1) * width),
-    y: Math.round(b.maxY * height),
-    w: Math.round(eyeW * 0.8 * width),
-    h: Math.round(eyeH * 0.9 * height),
-  }
-}
-
-// Maps a pixel-space ROI (in raw video coordinates) to a CSS percentage box
-// inside a square (1:1) viewfinder rendered with object-fit: cover, so the
-// live eye-guide overlay tracks the actual video content the user sees.
-function videoRoiToContainerPercent(roi, videoW, videoH) {
-  if (!roi || !videoW || !videoH) return null
-  const videoAspect = videoW / videoH
-  let scale, offsetXpx = 0, offsetYpx = 0
-  if (videoAspect > 1) {
-    // video wider than the square container -> height fills, width is cropped
-    scale = 1 / videoH
-    offsetXpx = (videoW * scale - 1) / 2
-  } else {
-    // video taller than/equal to the square container -> width fills, height is cropped
-    scale = 1 / videoW
-    offsetYpx = (videoH * scale - 1) / 2
-  }
-  const left = (roi.x * scale - offsetXpx) * 100
-  const top = (roi.y * scale - offsetYpx) * 100
-  const width = roi.w * scale * 100
-  const height = roi.h * scale * 100
-  return { left, top, width, height }
-}
-
 function meanRgb(ctx, roi) {
   if (!roi || roi.w <= 0 || roi.h <= 0) return null
   const { data } = ctx.getImageData(roi.x, roi.y, roi.w, roi.h)
@@ -221,6 +120,8 @@ function meanRgb(ctx, roi) {
 }
 
 async function loadFaceLandmarker() {
+  visionTasksPromise ??= import('@mediapipe/tasks-vision')
+  const { FaceLandmarker, FilesetResolver } = await visionTasksPromise
   const vision = await FilesetResolver.forVisionTasks(WASM_URL)
   const base = { modelAssetPath: MODEL_ASSET_URL }
   try {
@@ -239,42 +140,27 @@ async function loadFaceLandmarker() {
 }
 
 export default function ScanPage() {
+  const [searchParams] = useSearchParams()
   const [mode, setMode] = useState('face')
-  const [scanState, setScanState] = useState('idle')
+  const [scanState, setScanState] = useState('idle') // idle | initializing | scanning | analyzing | done | error
   const [result, setResult] = useState(null)
-  const [uncertainty, setUncertainty] = useState(null)
-  const [cameraQuality, setCameraQuality] = useState(null)
+  const [uncertainty, setUncertainty] = useState(null)   // { reliable, uncertaintyBpm } | { reliable:false, message }
+  const [cameraQuality, setCameraQuality] = useState(null) // from assessCameraQuality
   const [showCamPanel, setShowCamPanel] = useState(false)
   const [explanation, setExplanation] = useState('')
   const [isAiLoading, setIsAiLoading] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
-  const [signalQuality, setSignalQuality] = useState('none')
+  const [signalQuality, setSignalQuality] = useState('none') // none | adjusting | perfect
   const [secondsLeft, setSecondsLeft] = useState(Math.ceil(SCAN_DURATION_MS / 1000))
   const [selectedLang, setSelectedLang] = useState('en')
-  const [patientName, setPatientName] = useState('')
+  const [patients, setPatients] = useState([])
+  const [selectedPatientId, setSelectedPatientId] = useState('')
+  const [patientLoadError, setPatientLoadError] = useState('')
   const [savedRecordId, setSavedRecordId] = useState(null)
-  const [frozenFrame, setFrozenFrame] = useState(null)
-  const [lastCrestTimeMs, setLastCrestTimeMs] = useState(null)
-  const [calSbpInput, setCalSbpInput] = useState('')
-  const [calDbpInput, setCalDbpInput] = useState('')
-  const [calSaved, setCalSaved] = useState(false)
-
-  // Clinical Context Options
+  const [clinicalResult, setClinicalResult] = useState(null)
   const [ageGroup, setAgeGroup] = useState('adult')
   const [isPregnant, setIsPregnant] = useState(false)
   const [programmeContext, setProgrammeContext] = useState('general')
-  const [viewMode, setViewMode] = useState('patient')
-  const [isSpeaking, setIsSpeaking] = useState(false)
-
-  // Research Results
-  const [spo2Result, setSpo2Result] = useState(null)
-  const [afibResult, setAfibResult] = useState(null)
-  const [alertScaleResult, setAlertScaleResult] = useState(null)
-  const [anemiaResult, setAnemiaResult] = useState(null)
-  const [jaundiceResult, setJaundiceResult] = useState(null)
-  const [bpResult, setBpResult] = useState(null)
-  const [bmiResult, setBmiResult] = useState(null)
-  const [populationAnomaly, setPopulationAnomaly] = useState(null)
 
   const videoRef = useRef(null)
   const canvasRef = useRef(null)
@@ -282,33 +168,32 @@ export default function ScanPage() {
   const streamRef = useRef(null)
   const landmarkerRef = useRef(null)
   const rafRef = useRef(null)
-  const samplesRef = useRef([])
-  const brightnessHistoryRef = useRef([])
+  const samplesRef = useRef(new CircularBuffer(MAX_CAPTURE_SAMPLES))
+  const brightnessHistoryRef = useRef(new CircularBuffer(MAX_QUALITY_SAMPLES))
   const scanStartRef = useRef(0)
   const signalQualityRef = useRef('none')
   const secondsLeftRef = useRef(Math.ceil(SCAN_DURATION_MS / 1000))
-  const activeSpeakerRef = useRef(null)
   const lastLandmarkResultRef = useRef(null)
   const lastVideoSizeRef = useRef({ width: 0, height: 0 })
-  const eyeGuideRef = useRef(null)
+
+  useEffect(() => () => landmarkerRef.current?.close(), [])
 
   useEffect(() => {
-    let cancelled = false
-    loadFaceLandmarker()
-      .then((lm) => {
-        if (!cancelled) landmarkerRef.current = lm
+    let active = true
+    patientRepository.list()
+      .then((items) => {
+        if (!active) return
+        setPatients(items)
+        const requestedPatient = searchParams.get('patient')
+        if (requestedPatient && items.some((patient) => patient.id === requestedPatient)) {
+          setSelectedPatientId(requestedPatient)
+        }
       })
-      .catch((err) => console.error('Face landmarker failed to load', err))
+      .catch((error) => active && setPatientLoadError(error.message))
+    return () => { active = false }
+  }, [searchParams])
 
-    const stored = getStoredRecords()
-    const anomaly = evaluatePopulationAnomaly(stored)
-    setPopulationAnomaly(anomaly)
-
-    return () => {
-      cancelled = true
-      landmarkerRef.current?.close()
-    }
-  }, [])
+  const selectedPatient = patients.find((patient) => patient.id === selectedPatientId) ?? null
 
   const stopStream = useCallback(() => {
     streamRef.current?.getTracks().forEach((t) => t.stop())
@@ -318,19 +203,21 @@ export default function ScanPage() {
 
   useEffect(() => stopStream, [stopStream])
 
+  // Draw real-time PPG signal wave on waveCanvasRef
   const drawWaveform = useCallback(() => {
     const waveCanvas = waveCanvasRef.current
     if (!waveCanvas) return
     const wCtx = waveCanvas.getContext('2d')
     if (!wCtx) return
 
-    const samples = samplesRef.current
+    const samples = samplesRef.current.toArray()
     const width = waveCanvas.width
     const height = waveCanvas.height
 
     wCtx.clearRect(0, 0, width, height)
     if (samples.length < 2) return
 
+    // Draw baseline
     wCtx.strokeStyle = 'rgba(255, 255, 255, 0.1)'
     wCtx.lineWidth = 1
     wCtx.beginPath()
@@ -338,6 +225,7 @@ export default function ScanPage() {
     wCtx.lineTo(width, height / 2)
     wCtx.stroke()
 
+    // Get last 60 samples
     const recent = samples.slice(-60)
     const gVals = recent.map((s) => s.g)
     const minG = Math.min(...gVals)
@@ -358,175 +246,150 @@ export default function ScanPage() {
     wCtx.stroke()
   }, [mode])
 
-  async function finishScan() {
-    const canvas = canvasRef.current
-    // Grab a freeze-frame before the stream stops — stopStream() halts the
-    // camera tracks but never clears video.srcObject, which leaves the
-    // <video> element rendering solid black once the stream ends. Freezing
-    // the last real frame here means the "done" state shows what was
-    // actually captured instead of looking broken.
-    if (canvas && canvas.width > 0 && canvas.height > 0) {
-      try {
-        setFrozenFrame(canvas.toDataURL('image/jpeg', 0.7))
-      } catch (e) {
-        console.warn('Could not capture freeze-frame', e)
-      }
-    }
-
-    stopStream()
-    setScanState('analyzing')
-
-    const ctx = canvas ? canvas.getContext('2d') : null
-
-    if (mode === 'anemia' && ctx) {
-      const { width, height } = lastVideoSizeRef.current
-      const roi =
-        getConjunctivaRoi(lastLandmarkResultRef.current, width, height) ||
-        // Fallback only if no face was ever detected during the 4s capture window
-        { x: 50, y: 50, w: 200, h: 100 }
-      const anemiaRes = analyzeConjunctivalPallor(ctx, roi)
-      setAnemiaResult(anemiaRes)
-      setScanState('done')
-      setExplanation(`Anemia screening: ${anemiaRes.label}. ${anemiaRes.recommendation}`)
-      return
-    }
-
-    if (mode === 'jaundice' && ctx) {
-      const { width, height } = lastVideoSizeRef.current
-      const roi =
-        getScleraRoi(lastLandmarkResultRef.current, width, height) ||
-        // Fallback only if no face was ever detected during the 4s capture window
-        { x: 50, y: 50, w: 200, h: 100 }
-      const jaundiceRes = analyzeScleralIcterus(ctx, roi)
-      setJaundiceResult(jaundiceRes)
-      setScanState('done')
-      setExplanation(`Jaundice screening: ${jaundiceRes.label}. ${jaundiceRes.recommendation}`)
-      return
-    }
-
-    if (mode === 'bmi') {
-      const { width, height } = lastVideoSizeRef.current
-      const estimatedRatio = estimateShoulderToHeightRatio(lastLandmarkResultRef.current, width, height)
-      // Fallback to the population-typical default ratio only if no face
-      // was ever detected during the capture window (previously this ran
-      // unconditionally regardless of what was in frame).
-      const bmiRes = estimateMalnutritionBMI(estimatedRatio ?? 0.24)
-      setBmiResult(bmiRes)
-      setScanState('done')
-      setExplanation(`Malnutrition & BMI: ${bmiRes.category} (Est. BMI ${bmiRes.bmi}). ${bmiRes.recommendation}`)
-      return
-    }
-
-    const samples = samplesRef.current
-    const analysis = analyzeSignal(samples)
-
-    if (!analysis || !analysis.hr) {
-      setScanState('error')
-      setErrorMsg(
-        mode === 'fingertip'
-          ? 'Signal was inconsistent — ensure your fingertip firmly covers both camera lens and flash light and try again.'
-          : 'Could not capture a clear pulse signal — keep your face still in steady lighting and try again.'
-      )
-      return
-    }
-
-    const bHistory = brightnessHistoryRef.current
-    const meanB = bHistory.length ? bHistory.reduce((a, b) => a + b, 0) / bHistory.length : 80
-    const varB = bHistory.length ? bHistory.reduce((s, v) => s + (v - meanB) ** 2, 0) / bHistory.length : 0
-    const lightingTier = inferLightingTier(meanB, varB)
-    const motionTier = inferMotionTier(bHistory)
-    const meanR = samples.length ? samples.reduce((a, s) => a + s.r, 0) / samples.length : 128
-    const meanG = samples.length ? samples.reduce((a, s) => a + s.g, 0) / samples.length : 128
-    const meanBlue = samples.length ? samples.reduce((a, s) => a + s.b, 0) / samples.length : 128
-    const skinToneTier = inferSkinToneTier(meanR, meanG, meanBlue)
-    const camQ = cameraQuality
-    const captureObj = {
-      fps: camQ?.fps ?? 30,
-      cameraTier: camQ?.cameraTier ?? 'webcam',
-      compressionTier: camQ?.compressionTier ?? 'modernCodecTypical',
-      lightingTier,
-      motionTier,
-      skinToneTier,
-      windowSeconds: analysis.windowSeconds ?? 10,
-    }
-    const unc = estimateUncertainty(captureObj, analysis.liveConfidence ?? 0.5)
-    setUncertainty(unc)
-    setResult(analysis)
-
-    const redTrace = samples.map((s) => s.r)
-    const greenTrace = samples.map((s) => s.g)
-    const spo2Res = estimateSpO2(redTrace, greenTrace, unc.reliable, skinToneTier)
-    setSpo2Result(spo2Res)
-
-    const afibRes = checkIrregularRhythm(analysis.beatTimesMs || [], mode)
-    setAfibResult(afibRes)
-
-    const alertRes = evaluateAlertScale({
-      hr: analysis.hr,
-      br: analysis.br,
-      stress: analysis.stress,
-      ageGroup,
-      isPregnant,
-      programmeContext,
-    })
-    setAlertScaleResult(alertRes)
-
-    if (mode === 'bp_ptt') {
-      // Real measured single-site PPG crest time (see rppg.js/bloodPressurePTT.js
-      // for why this replaced the old fabricated two-site "PTT" value —
-      // true simultaneous face+finger capture isn't architecturally possible
-      // with one camera). Meaningless without the user's own saved
-      // calibration baseline; the estimator itself handles that fallback.
-      const bpEst = estimateBloodPressurePTT(analysis.crestTimeMs)
-      setBpResult(bpEst)
-      setLastCrestTimeMs(analysis.crestTimeMs)
-    }
-
-    setIsAiLoading(true)
-    const aiExplanationText = await fetchAIExplanation({
-      hr: analysis.hr,
-      br: analysis.br,
-      stress: analysis.stress,
-      spo2: spo2Res.spo2,
-      alertTier: alertRes.tier,
-      alertReasons: alertRes.reasons,
-      ageGroup,
-      isPregnant,
-      langCode: selectedLang,
-      mode: viewMode,
-    })
-
-    setExplanation(aiExplanationText)
-    setIsAiLoading(false)
-    setScanState('done')
-
-    const finalPatientName = patientName.trim() || `Patient P-${Math.floor(1000 + Math.random() * 9000)}`
-    const pid = `P-${Math.floor(1000 + Math.random() * 9000)}`
-
+  async function persistCompletedScreening({ analysis = {}, extended = {}, risk, explanationText, source, qualityFlags = 0 }) {
     const recordObj = {
-      id: pid,
-      patientId: pid,
-      name: finalPatientName,
-      hr: analysis.hr,
-      br: analysis.br || 16,
-      stress: analysis.stress || 25,
-      stressLabel: getStressLabel(analysis.stress),
-      spo2: spo2Res.spo2,
-      alertTier: alertRes.tier,
-      alertReasons: alertRes.reasons,
-      isIrregularRhythm: afibRes.isIrregular,
-      status: alertRes.tier === 'RED' || alertRes.tier === 'ORANGE' ? 'flagged' : 'ok',
-      explanation: aiExplanationText,
+      id: `demo-screening-${crypto.randomUUID()}`,
+      patientId: selectedPatient?.patient_code,
+      patientCode: selectedPatient?.patient_code,
+      patientDatabaseId: selectedPatient?.id,
+      name: selectedPatient?.full_name || 'Unlinked patient',
+      mode,
+      hr: analysis.hr ?? null,
+      br: analysis.br ?? null,
+      stress: analysis.stress ?? null,
+      rmssd: analysis.rmssd ?? null,
+      stressLabel: Number.isFinite(Number(analysis.stress)) ? getStressLabel(analysis.stress) : null,
+      status: risk.flagged ? 'flagged' : 'ok',
+      alertTier: risk.tier,
+      alertReasons: risk.reasons,
+      referralPriority: risk.priority,
+      explanation: explanationText,
       language: selectedLang,
+      source,
+      algorithmVersion: VISUAL_MODES.has(mode) ? 'clinical-vision-v1' : 'rppg-worker-v3',
+      captureQuality: cameraQuality?.qualityScore ?? null,
+      qualityFlags,
       ageGroup,
       isPregnant,
       programmeContext,
       timestamp: new Date().toISOString(),
       synced: false,
+      ...extended,
     }
 
-    saveRecord(recordObj)
-    setSavedRecordId(pid)
+    try {
+      const saved = await screeningRepository.save(recordObj)
+      setSavedRecordId(saved.reportId || saved.databaseId || saved.id)
+    } catch (error) {
+      console.error('Secure record save failed', error)
+      setErrorMsg('Screening completed, but the protected record could not be saved. Please sign in and try again.')
+    }
+  }
+
+  async function finishScan() {
+    stopStream()
+    setScanState('analyzing')
+
+    const canvas = canvasRef.current
+    const ctx = canvas?.getContext('2d', { willReadFrequently: true })
+    const { width, height } = lastVideoSizeRef.current
+
+    if (VISUAL_MODES.has(mode)) {
+      let extended = {}
+      let visualResult
+      if (mode === 'anemia') {
+        visualResult = analyzeConjunctivalPallor(ctx, getEyeRoi(lastLandmarkResultRef.current, width, height, true))
+        extended = { anemiaResult: visualResult }
+      } else if (mode === 'jaundice') {
+        visualResult = analyzeScleralIcterus(ctx, getEyeRoi(lastLandmarkResultRef.current, width, height, false))
+        extended = { jaundiceResult: visualResult }
+      } else {
+        const ratio = estimateShoulderToHeightRatio(lastLandmarkResultRef.current, width, height)
+        visualResult = ratio == null
+          ? { bmi: null, category: 'Low Confidence — Retry Scan', tier: 'UNKNOWN', recommendation: 'Face and shoulders were not detected together. Reframe and retry.' }
+          : estimateMalnutritionBMI(ratio)
+        extended = { bmiResult: visualResult }
+      }
+
+      const risk = clinicalRiskPolicy.evaluate({
+        mode,
+        anemia: extended.anemiaResult,
+        jaundice: extended.jaundiceResult,
+        bmi: extended.bmiResult,
+      })
+      const explanationText = `${visualResult.label || visualResult.category}. ${visualResult.recommendation}`
+      setClinicalResult({ mode, ...visualResult, risk })
+      setExplanation(explanationText)
+      setScanState('done')
+      if (risk.tier !== 'UNKNOWN') {
+        await persistCompletedScreening({ extended, risk, explanationText, source: `camera_${mode}` })
+      }
+      return
+    }
+
+    const samples = samplesRef.current.toArray()
+    const analysis = await signalAnalysisService.analyze(samples)
+    if (!analysis || !analysis.hr) {
+      setScanState('error')
+      setErrorMsg(mode === 'fingertip'
+        ? 'Signal was inconsistent — cover the lens and flash fully, hold steady, and try again.'
+        : 'Could not capture a clear pulse signal — keep the face still in steady lighting and try again.')
+      return
+    }
+
+    const bHistory = brightnessHistoryRef.current.toArray()
+    const meanB = bHistory.length ? bHistory.reduce((sum, value) => sum + value, 0) / bHistory.length : 80
+    const varB = bHistory.length ? bHistory.reduce((sum, value) => sum + (value - meanB) ** 2, 0) / bHistory.length : 0
+    const lightingTier = inferLightingTier(meanB, varB)
+    const motionTier = inferMotionTier(bHistory)
+    const meanR = samples.reduce((sum, sample) => sum + sample.r, 0) / samples.length
+    const meanG = samples.reduce((sum, sample) => sum + sample.g, 0) / samples.length
+    const meanBChannel = samples.reduce((sum, sample) => sum + sample.b, 0) / samples.length
+    const skinToneTier = inferSkinToneTier(meanR, meanG, meanBChannel)
+    const unc = estimateUncertainty({
+      fps: cameraQuality?.fps ?? 30,
+      cameraTier: cameraQuality?.cameraTier ?? 'webcam',
+      compressionTier: cameraQuality?.compressionTier ?? 'modernCodecTypical',
+      lightingTier,
+      motionTier,
+      skinToneTier,
+      windowSeconds: analysis.windowSeconds ?? scanDuration(mode) / 1000,
+    }, analysis.liveConfidence ?? 0.5)
+    const qualityFlags = createQualityMask({ camera: cameraQuality, lightingTier, motionTier, uncertainty: unc })
+    const spo2Result = estimateSpO2(samples.map((sample) => sample.r), samples.map((sample) => sample.g), unc.reliable, skinToneTier)
+    const rhythmResult = checkIrregularRhythm(analysis.beatTimesMs || [], mode)
+    const bpResult = mode === 'bp_ptt' ? estimateBloodPressurePTT(analysis.crestTimeMs, null) : null
+    const risk = clinicalRiskPolicy.evaluate({
+      mode, heartRate: analysis.hr, breathingRate: analysis.br, stressScore: analysis.stress,
+      ageGroup, isPregnant, programmeContext, spo2: spo2Result.spo2,
+      isIrregularRhythm: rhythmResult.isIrregular,
+    })
+
+    setResult(analysis)
+    setUncertainty(unc)
+    setClinicalResult({ mode, spo2Result, rhythmResult, bpResult, risk })
+    setIsAiLoading(true)
+    const explanationText = await fetchAIExplanation({
+      hr: analysis.hr, br: analysis.br, stress: analysis.stress, spo2: spo2Result.spo2,
+      alertTier: risk.tier, alertReasons: risk.reasons, ageGroup, isPregnant,
+      programmeContext, langCode: selectedLang,
+    })
+    setExplanation(explanationText)
+    setIsAiLoading(false)
+    setScanState('done')
+
+    await persistCompletedScreening({
+      analysis,
+      extended: {
+        spo2: spo2Result.spo2,
+        isIrregularRhythm: rhythmResult.isIrregular,
+        bpResult,
+      },
+      risk,
+      explanationText,
+      source: mode === 'fingertip' ? 'contact_ppg' : mode === 'bp_ptt' ? 'camera_bp_trend' : 'camera_rppg',
+      qualityFlags,
+    })
   }
 
   function sampleLoop(currentMode) {
@@ -536,14 +399,15 @@ export default function ScanPage() {
 
     const ctx = canvas.getContext('2d', { willReadFrequently: true })
     const landmarker = landmarkerRef.current
+    const scanStrategy = ScanStrategyFactory.create(currentMode === 'fingertip' ? 'fingertip' : 'face')
+
     let cachedRoi = null
     let frameCount = 0
     const DETECT_EVERY_N_FRAMES = 3
 
     const tick = () => {
       const elapsed = performance.now() - scanStartRef.current
-      const duration = currentMode === 'anemia' || currentMode === 'jaundice' || currentMode === 'bmi' ? 4000 : SCAN_DURATION_MS
-
+      const duration = scanDuration(currentMode)
       if (elapsed >= duration) {
         finishScan()
         return
@@ -558,6 +422,7 @@ export default function ScanPage() {
       let currentQuality = 'none'
 
       if (currentMode === 'fingertip') {
+        // Fingertip mode: Check red channel intensity and red dominance ratio
         if (video.readyState >= 2) {
           canvas.width = video.videoWidth
           canvas.height = video.videoHeight
@@ -572,14 +437,30 @@ export default function ScanPage() {
           const rgb = meanRgb(ctx, roi)
 
           if (rgb) {
-            const hasFingerContact = rgb.r > 15 && (rgb.r >= rgb.b * 1.03)
-            currentQuality = hasFingerContact ? 'perfect' : 'none'
+            const [track] = streamRef.current?.getVideoTracks() || []
+            const caps = track?.getCapabilities?.()
+            const hasTorch = Boolean(caps?.torch)
+
+            // Track brightness for lighting/motion inference
+            const brightness = (rgb.r + rgb.g + rgb.b) / 3
+            brightnessHistoryRef.current.push(brightness)
+
+            // Fingertip contact detection (Gudi et al. 2020 & contact PPG physics):
+            // Finger tissue strongly absorbs blue light, so Red > Blue is the primary physical indicator.
+            // Auto-white balance on webcams/mobile sensors can boost G/B channels, so redRatioG may be ~1.02-1.15.
+            const { detected: hasFingerContact, strong: isVeryGoodContact } = scanStrategy.assessContact(rgb, hasTorch)
+
             if (hasFingerContact) {
+              currentQuality = isVeryGoodContact ? 'perfect' : 'adjusting'
+              // ALWAYS push samples continuously when finger is touching lens (prevents frame drops & gap noise)
               samplesRef.current.push({ t: elapsed, ...rgb, mode: 'fingertip' })
+            } else {
+              currentQuality = 'none'
             }
           }
         }
       } else {
+        // Face mode: Run MediaPipe face landmarker
         frameCount++
         if (landmarker && video.readyState >= 2 && frameCount % DETECT_EVERY_N_FRAMES === 0) {
           try {
@@ -587,29 +468,8 @@ export default function ScanPage() {
             cachedRoi = getForeheadRoi(res, video.videoWidth, video.videoHeight)
             lastLandmarkResultRef.current = res
             lastVideoSizeRef.current = { width: video.videoWidth, height: video.videoHeight }
-
-            // Live-track the framing guide overlay for anemia/jaundice/bmi modes
-            if ((currentMode === 'anemia' || currentMode === 'jaundice' || currentMode === 'bmi') && eyeGuideRef.current) {
-              const roi =
-                currentMode === 'anemia'
-                  ? getConjunctivaRoi(res, video.videoWidth, video.videoHeight)
-                  : currentMode === 'jaundice'
-                    ? getScleraRoi(res, video.videoWidth, video.videoHeight)
-                    : getShoulderGuideRoi(res, video.videoWidth, video.videoHeight)
-              const box = videoRoiToContainerPercent(roi, video.videoWidth, video.videoHeight)
-              if (box) {
-                eyeGuideRef.current.style.left = box.left + '%'
-                eyeGuideRef.current.style.top = box.top + '%'
-                eyeGuideRef.current.style.width = box.width + '%'
-                eyeGuideRef.current.style.height = box.height + '%'
-                eyeGuideRef.current.style.opacity = '1'
-                eyeGuideRef.current.classList.add('is-aligned')
-              } else {
-                eyeGuideRef.current.classList.remove('is-aligned')
-              }
-            }
           } catch (e) {
-            console.warn('Landmarker frame error', e)
+            console.warn('Face detection error', e)
           }
         }
 
@@ -617,26 +477,14 @@ export default function ScanPage() {
           canvas.width = video.videoWidth
           canvas.height = video.videoHeight
           ctx.drawImage(video, 0, 0)
-
-          if (cachedRoi) {
-            currentQuality = 'perfect'
+          lastVideoSizeRef.current = { width: video.videoWidth, height: video.videoHeight }
+          currentQuality = cachedRoi ? 'perfect' : 'adjusting'
+          if (!VISUAL_MODES.has(currentMode) && cachedRoi) {
             const rgb = meanRgb(ctx, cachedRoi)
             if (rgb) {
-              brightnessHistoryRef.current.push(rgb.g)
               samplesRef.current.push({ t: elapsed, ...rgb })
-            }
-          } else {
-            currentQuality = 'adjusting'
-            const centerRoi = {
-              x: Math.round(video.videoWidth * 0.3),
-              y: Math.round(video.videoHeight * 0.1),
-              w: Math.round(video.videoWidth * 0.4),
-              h: Math.round(video.videoHeight * 0.2),
-            }
-            const rgb = meanRgb(ctx, centerRoi)
-            if (rgb) {
-              brightnessHistoryRef.current.push(rgb.g)
-              samplesRef.current.push({ t: elapsed, ...rgb })
+              const brightness = (rgb.r + rgb.g + rgb.b) / 3
+              brightnessHistoryRef.current.push(brightness)
             }
           }
         }
@@ -656,31 +504,44 @@ export default function ScanPage() {
 
   async function startScan() {
     setErrorMsg('')
+    if (!selectedPatient) {
+      setErrorMsg('Select a registered patient before starting the screening.')
+      return
+    }
+    if (selectedPatient.consent_status !== 'granted') {
+      setErrorMsg('This patient profile does not have active consent for a new screening.')
+      return
+    }
     setScanState('initializing')
-    setFrozenFrame(null)
     setResult(null)
     setUncertainty(null)
-    setSpo2Result(null)
-    setAfibResult(null)
-    setAlertScaleResult(null)
-    setAnemiaResult(null)
-    setJaundiceResult(null)
-    setBpResult(null)
-    setBmiResult(null)
+    setClinicalResult(null)
+    setSavedRecordId(null)
     setExplanation('')
-    samplesRef.current = []
-    brightnessHistoryRef.current = []
+    samplesRef.current.clear()
+    brightnessHistoryRef.current.clear()
     signalQualityRef.current = 'none'
     setSignalQuality('none')
-    secondsLeftRef.current = Math.ceil(SCAN_DURATION_MS / 1000)
+    lastLandmarkResultRef.current = null
+    lastVideoSizeRef.current = { width: 0, height: 0 }
+    secondsLeftRef.current = Math.ceil(scanDuration(mode) / 1000)
     setSecondsLeft(secondsLeftRef.current)
 
     try {
-      const facingModeHint = mode === 'face' || mode === 'anemia' || mode === 'jaundice' || mode === 'bmi' ? 'user' : 'environment'
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: facingModeHint, width: 640, height: 480 },
-      })
+      const scanStrategy = ScanStrategyFactory.create(mode === 'fingertip' ? 'fingertip' : 'face')
+      if (mode !== 'fingertip' && !landmarkerRef.current) {
+        landmarkerRef.current = await loadFaceLandmarker()
+      }
+
+      const facingModeHint = scanStrategy.facingMode()
+      const constraints = scanStrategy.cameraConstraints()
+
+      const stream = await navigator.mediaDevices.getUserMedia(constraints)
       streamRef.current = stream
+
+      // ── Camera quality assessment (once, right after stream opens) ──────
+      const camQ = assessCameraQuality(stream, facingModeHint)
+      setCameraQuality(camQ)
 
       if (mode === 'fingertip') {
         const [track] = stream.getVideoTracks()
@@ -702,44 +563,28 @@ export default function ScanPage() {
         }
       }
 
-      const camQ = assessCameraQuality(stream, facingModeHint)
-      setCameraQuality(camQ)
-
       const video = videoRef.current
       if (video) {
         video.srcObject = stream
         await video.play()
+        await new Promise((resolve) => {
+          if (video.readyState >= 2) return resolve()
+          video.onloadeddata = () => resolve()
+        })
       }
 
       setScanState('scanning')
       scanStartRef.current = performance.now()
       sampleLoop(mode)
-
-      // Voice-guided positioning for the harder-to-frame-correctly modes —
-      // spoken instructions instead of relying only on the on-screen hint
-      // text, since these all require precise, non-obvious body positioning.
-      if (mode === 'anemia' || mode === 'jaundice' || mode === 'bmi') {
-        activeSpeakerRef.current?.cancel()
-        const modeHint = MODES.find((m) => m.id === mode)?.hint
-        if (modeHint) {
-          activeSpeakerRef.current = speakExplanation(modeHint, selectedLang)
-        }
-      }
     } catch (err) {
-      console.error('Camera open failed', err)
+      console.error('getUserMedia failed', err)
       setScanState('error')
-      setErrorMsg('Could not access camera — please grant camera permissions.')
+      setErrorMsg(
+        err.name === 'NotAllowedError'
+          ? 'Camera permission was denied — please grant camera access in browser settings.'
+          : 'Could not access camera on this device.'
+      )
     }
-  }
-
-  function handleVoiceReadout() {
-    if (isSpeaking) {
-      activeSpeakerRef.current?.cancel()
-      setIsSpeaking(false)
-      return
-    }
-    setIsSpeaking(true)
-    activeSpeakerRef.current = speakExplanation(explanation, selectedLang, () => setIsSpeaking(false))
   }
 
   function resetScan() {
@@ -747,13 +592,12 @@ export default function ScanPage() {
     setScanState('idle')
     setResult(null)
     setUncertainty(null)
+    setClinicalResult(null)
+    setSavedRecordId(null)
     setExplanation('')
     setErrorMsg('')
     setSignalQuality('none')
-    setFrozenFrame(null)
-    setCalSaved(false)
-    setCalSbpInput('')
-    setCalDbpInput('')
+    brightnessHistoryRef.current.clear()
   }
 
   const activeMode = MODES.find((m) => m.id === mode)
@@ -769,8 +613,11 @@ export default function ScanPage() {
       if (signalQuality === 'perfect') {
         liveStatusMsg = `Perfect! Hold still for scan (${secondsLeft}s)`
         statusBadgeClass = 'pill--ok'
+      } else if (signalQuality === 'adjusting') {
+        liveStatusMsg = `Fingertip detected — hold steady (${secondsLeft}s)`
+        statusBadgeClass = 'pill--pending'
       } else {
-        liveStatusMsg = 'Cover camera lens & flash with fingertip'
+        liveStatusMsg = 'Cover camera or webcam lens with your fingertip'
         statusBadgeClass = 'pill--flag'
       }
     } else {
@@ -783,26 +630,17 @@ export default function ScanPage() {
       }
     }
   } else if (scanState === 'analyzing') {
-    liveStatusMsg = 'Analyzing pulse wave & consulting Qwen AI…'
+    liveStatusMsg = VISUAL_MODES.has(mode) ? 'Analyzing the captured clinical region…' : 'Analyzing pulse wave and secure guidance…'
   }
 
   return (
     <main className="page scan-page">
-      {populationAnomaly && populationAnomaly.isAnomaly && (
-        <div style={{ background: '#ef4444', color: '#fff', padding: '10px 16px', borderRadius: '8px', marginBottom: '12px', fontWeight: 'bold' }}>
-          {populationAnomaly.alertMessage}
-        </div>
-      )}
-
-      <div className="scan-page__intro">
-        <div className="scan-header-top">
-          <div>
-            <p className="eyebrow">Vitals screening</p>
-            <h1 className="page-title">10-Second Vitals Screening</h1>
-          </div>
+      <div className="scan-page__intro health-hero">
+        <div className="scan-intro__topline">
+          <p className="eyebrow"><span className="eyebrow-dot" /> Camera health intelligence</p>
           <div className="lang-selector-group">
             <label htmlFor="lang-select" className="lang-label">
-              Patient Language:
+              Guidance language
             </label>
             <select
               id="lang-select"
@@ -819,157 +657,168 @@ export default function ScanPage() {
             </select>
           </div>
         </div>
-        <p className="page-subtitle">
-          Vytal detects heart rate, breathing rate, and stress index using camera rPPG signal processing. Choose scan mode below:
-        </p>
 
-        {/* Clinical Patient Context Bar */}
-        <div className="clinical-context-bar" style={{ display: 'flex', gap: '12px', marginTop: '12px', flexWrap: 'wrap' }}>
-          <select
-            value={ageGroup}
-            onChange={(e) => setAgeGroup(e.target.value)}
-            className="patient-input"
-            style={{ width: 'auto', padding: '6px 12px', fontSize: '13px' }}
-            disabled={busy}
-          >
-            {AGE_GROUPS.map((a) => (
-              <option key={a.id} value={a.id}>
-                👤 {a.label}
-              </option>
-            ))}
-          </select>
-
-          <select
-            value={programmeContext}
-            onChange={(e) => setProgrammeContext(e.target.value)}
-            className="patient-input"
-            style={{ width: 'auto', padding: '6px 12px', fontSize: '13px' }}
-            disabled={busy}
-          >
-            {PROGRAMME_CONTEXTS.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.icon} {p.label}
-              </option>
-            ))}
-          </select>
-
-          <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', cursor: 'pointer' }}>
-            <input
-              type="checkbox"
-              checked={isPregnant}
-              onChange={(e) => setIsPregnant(e.target.checked)}
-              disabled={busy || ageGroup !== 'adult'}
-            />
-            🤰 3rd Trimester Pregnancy
-          </label>
-
-          <div style={{ marginLeft: 'auto', display: 'flex', gap: '4px' }}>
+        <div className="scan-intro__copy">
+          <span className="health-hero__kicker">A clearer view of your everyday health</span>
+          <h1 className="page-title">
+            Your health.<br />
+            <span>Clearly in view.</span>
+          </h1>
+          <p className="page-subtitle">
+            Turn your camera into a simple health check. Vytal reads subtle pulse signals and
+            translates them into useful guidance in seconds—without a wearable.
+          </p>
+          <div className="health-hero__actions">
             <button
-              className={`btn btn--ghost ${viewMode === 'patient' ? 'active' : ''}`}
-              style={{ fontSize: '12px', padding: '4px 10px' }}
-              onClick={() => setViewMode('patient')}
+              type="button"
+              className="btn btn--primary health-hero__cta"
+              onClick={() => document.getElementById('scan-console')?.scrollIntoView({ behavior: 'smooth' })}
             >
-              Patient View
+              Start a health check <span aria-hidden="true">↓</span>
             </button>
-            <button
-              className={`btn btn--ghost ${viewMode === 'clinician' ? 'active' : ''}`}
-              style={{ fontSize: '12px', padding: '4px 10px' }}
-              onClick={() => setViewMode('clinician')}
-            >
-              🩺 Clinician View
-            </button>
+              <span className="health-hero__microcopy"><strong>15 seconds.</strong> No extra device.</span>
           </div>
+          <div className="health-hero__trust" aria-label="Product capabilities">
+            <span><i className="health-dot health-dot--pink" /> Heart rate</span>
+            <span><i className="health-dot health-dot--blue" /> Breathing</span>
+            <span><i className="health-dot health-dot--purple" /> Variability</span>
+          </div>
+        </div>
+
+        <div className="scan-intro__visual">
+          <BioSignalVisual
+            onStart={() => document.getElementById('scan-console')?.scrollIntoView({ behavior: 'smooth' })}
+          />
         </div>
       </div>
 
-      <div className="scan-layout">
+      <div className="scan-layout" id="scan-console">
         <section className="card scan-viewfinder-card">
-          <div className="mode-toggle" role="tablist" aria-label="Scan mode">
-            {MODES.map((m) => (
-              <button
-                key={m.id}
-                role="tab"
-                aria-selected={mode === m.id}
-                disabled={busy}
-                className={'mode-toggle__btn' + (mode === m.id ? ' active' : '')}
-                onClick={() => {
-                  setMode(m.id)
-                  resetScan()
-                }}
-              >
-                {m.label}
-              </button>
-            ))}
+          <div className="scan-panel__masthead">
+            <div>
+              <span className="panel-index">CAM / 01</span>
+              <p className="panel-title">Signal acquisition</p>
+            </div>
+            <div className="mode-toggle" role="tablist" aria-label="Scan mode">
+              {MODES.map((m) => (
+                <button
+                  key={m.id}
+                  role="tab"
+                  aria-selected={mode === m.id}
+                  disabled={busy}
+                  className={'mode-toggle__btn' + (mode === m.id ? ' active' : '')}
+                  onClick={() => {
+                    setMode(m.id)
+                    resetScan()
+                  }}
+                >
+                  {m.label}
+                </button>
+              ))}
+            </div>
           </div>
 
-          {/* Clean status pill placed ABOVE camera circle (no clipping!) */}
-          {liveStatusMsg && (
-            <div className="scanner-status-banner" style={{ textAlign: 'center', marginBottom: '12px' }}>
-              <span className={'pill ' + statusBadgeClass}>
+          <div className="clinical-context-row">
+            <label>
+              <span>Age band</span>
+              <select value={ageGroup} onChange={(event) => setAgeGroup(event.target.value)} disabled={busy}>
+                {AGE_GROUPS.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
+              </select>
+            </label>
+            <label>
+              <span>Programme</span>
+              <select value={programmeContext} onChange={(event) => setProgrammeContext(event.target.value)} disabled={busy}>
+                {PROGRAMME_CONTEXTS.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
+              </select>
+            </label>
+            <label className="clinical-context-row__check">
+              <input type="checkbox" checked={isPregnant} onChange={(event) => setIsPregnant(event.target.checked)} disabled={busy || ageGroup !== 'adult'} />
+              Third-trimester context
+            </label>
+          </div>
+
+          <div className="scan-device__statusline">
+            <span className="mono">CAMERA FEED / RGB</span>
+            {liveStatusMsg ? (
+              <span className={'scanner-status-banner ' + statusBadgeClass}>
                 <span className="pill-dot" />
                 {liveStatusMsg}
               </span>
-            </div>
-          )}
+            ) : (
+              <span className="mono">READY</span>
+            )}
+          </div>
 
-          <div
-            className={'viewfinder' + (scanState === 'scanning' ? ' is-scanning' : '')}
-            style={{
-              borderColor:
-                scanState === 'scanning'
-                  ? signalQuality === 'perfect'
-                    ? 'var(--ok)'
-                    : 'var(--accent2)'
-                  : 'var(--card-border)',
-              transition: 'border-color 200ms ease',
-            }}
-          >
-            <video
-              ref={videoRef}
-              playsInline
-              muted
-              autoPlay
+          <div className="viewfinder-shell">
+            <div
+              className={'viewfinder' + (scanState === 'scanning' ? ' is-scanning' : '')}
               style={{
-                width: '100%',
-                height: '100%',
-                objectFit: 'cover',
-                display: scanState === 'scanning' || scanState === 'analyzing' ? 'block' : 'none',
-                transform: mode === 'face' ? 'scaleX(-1)' : 'none', // Mirror selfie video
+                borderColor:
+                  scanState === 'scanning'
+                    ? signalQuality === 'perfect'
+                      ? 'var(--mint-strong)'
+                      : 'var(--amber)'
+                    : 'var(--line-on-dark)',
+                transition: 'border-color 200ms ease',
               }}
-            />
-            {scanState === 'done' && frozenFrame && (
-              <img
-                src={frozenFrame}
-                alt=""
+            >
+              <video
+                ref={videoRef}
+                playsInline
+                muted
+                autoPlay
                 style={{
                   width: '100%',
                   height: '100%',
                   objectFit: 'cover',
-                  display: 'block',
-                  filter: 'saturate(0.6) brightness(0.55)',
-                  transform: mode === 'face' ? 'scaleX(-1)' : 'none',
+                  display: busy || scanState === 'done' ? 'block' : 'none',
+                  transform: mode === 'fingertip' ? 'none' : 'scaleX(-1)',
                 }}
               />
-            )}
-            <canvas ref={canvasRef} style={{ display: 'none' }} />
+              <canvas ref={canvasRef} style={{ display: 'none' }} />
 
-            {/* Overlays and visual constraints */}
-            {scanState === 'scanning' && mode === 'face' && (
-              <div className="viewfinder__face-guide">
-                <div
-                  className={'face-oval' + (signalQuality === 'perfect' ? ' is-aligned' : '')}
-                />
-              </div>
-            )}
+              {scanState === 'scanning' && mode !== 'fingertip' && (
+                <div className="viewfinder__face-guide">
+                  <div
+                    className={(mode === 'anemia' || mode === 'jaundice' ? 'clinical-eye-guide' : 'face-oval') + (signalQuality === 'perfect' ? ' is-aligned' : '')}
+                  />
+                </div>
+              )}
 
-            {scanState === 'scanning' && (mode === 'anemia' || mode === 'jaundice' || mode === 'bmi') && (
-              <div ref={eyeGuideRef} className="eye-guide" style={{ opacity: 0 }} />
-            )}
+              {scanState === 'scanning' && mode === 'fingertip' && (
+                <div className="viewfinder__finger-guide">
+                  <div className={'finger-icon-wrap' + (signalQuality === 'perfect' ? ' is-aligned' : '')}>
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none">
+                      <path
+                        d="M12 2C9 2 7 5 7 9v6a5 5 0 0 0 10 0V9c0-4-2-7-5-7Z"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                      />
+                      <path d="M9 10h6M9 13h6" stroke="currentColor" strokeWidth="1.5" />
+                    </svg>
+                  </div>
+                </div>
+              )}
 
-            {scanState === 'scanning' && mode === 'fingertip' && (
-              <div className="viewfinder__finger-guide">
-                <div className={'finger-icon-wrap' + (signalQuality === 'perfect' ? ' is-aligned' : '')}>
-                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none">
+              {scanState === 'idle' && mode === 'face' && (
+                <div className="viewfinder__placeholder">
+                  <span className="viewfinder__step mono">STEP 01 / ALIGN</span>
+                  <svg width="56" height="56" viewBox="0 0 24 24" fill="none">
+                    <path
+                      d="M4 8a2 2 0 0 1 2-2h1.5l1-1.5h7l1 1.5H18a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8Z"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                    />
+                    <circle cx="12" cy="13" r="3.5" stroke="currentColor" strokeWidth="1.5" />
+                  </svg>
+                  <p>Center the face in the frame.<br />Keep the camera steady.</p>
+                </div>
+              )}
+
+              {scanState === 'idle' && mode === 'fingertip' && (
+                <div className="viewfinder__placeholder">
+                  <span className="viewfinder__step mono">STEP 01 / COVER</span>
+                  <svg width="56" height="56" viewBox="0 0 24 24" fill="none">
                     <path
                       d="M12 2C9 2 7 5 7 9v6a5 5 0 0 0 10 0V9c0-4-2-7-5-7Z"
                       stroke="currentColor"
@@ -977,35 +826,33 @@ export default function ScanPage() {
                     />
                     <path d="M9 10h6M9 13h6" stroke="currentColor" strokeWidth="1.5" />
                   </svg>
-                  <p>Cover rear camera lens & flash with fingertip</p>
+                  <p>Cover the rear lens and flash.<br />Apply light, even pressure.</p>
                 </div>
-              </div>
-            )}
+              )}
 
-            {scanState === 'initializing' && (
-              <div className="viewfinder__placeholder">
-                <div className="loading-spinner" />
-                <p>Starting camera…</p>
-              </div>
-            )}
+              {scanState === 'idle' && mode !== 'face' && mode !== 'fingertip' && (
+                <div className="viewfinder__placeholder">
+                  <span className="viewfinder__step mono">STEP 01 / POSITION</span>
+                  <p>{activeMode.hint}</p>
+                  <small>Screening proxy only — confirm concerning results with an approved clinical test.</small>
+                </div>
+              )}
 
-            {scanState === 'idle' && (
-              <div className="viewfinder__placeholder">
-                <p>{activeMode.hint}</p>
-              </div>
-            )}
+              {scanState === 'error' && (
+                <div className="viewfinder__placeholder error">
+                  <span className="viewfinder__step mono">INPUT ERROR</span>
+                  <p>{errorMsg}</p>
+                </div>
+              )}
 
-            {scanState === 'error' && (
-              <div className="viewfinder__placeholder error">
-                <p>{errorMsg}</p>
-              </div>
-            )}
-
-            {scanState === 'scanning' && <div className="viewfinder__scanline" />}
+              {scanState === 'scanning' && <div className="viewfinder__scanline" />}
+            </div>
+            <span className="viewfinder-shell__label viewfinder-shell__label--top mono">OPTICAL / rPPG</span>
+            <span className="viewfinder-shell__label viewfinder-shell__label--bottom mono">LIVE / 30 FPS</span>
           </div>
 
           {/* Real-time PPG Waveform preview */}
-          {scanState === 'scanning' && (
+          {scanState === 'scanning' && !VISUAL_MODES.has(mode) && (
             <div className="ppg-waveform-card">
               <div className="ppg-waveform-header">
                 <span className="pulse-label">Pulse Waveform (rPPG Signal)</span>
@@ -1015,58 +862,70 @@ export default function ScanPage() {
             </div>
           )}
 
-          <p className="scan-hint">{errorMsg || activeMode.hint}</p>
+          <div className="scan-console__footer">
+            <div className="scan-console__copy">
+              <span className="mono">INSTRUCTION</span>
+              <p className="scan-hint">{errorMsg || activeMode.hint}</p>
+            </div>
+            <div className="scan-console__actions">
+              <div className="patient-name-input-group">
+                <label htmlFor="patient-profile">Linked patient profile</label>
+                <select
+                  id="patient-profile"
+                  value={selectedPatientId}
+                  onChange={(e) => setSelectedPatientId(e.target.value)}
+                  className="patient-input"
+                  disabled={busy}
+                  required
+                >
+                  <option value="">Select a registered patient</option>
+                  {patients.map((patient) => (
+                    <option key={patient.id} value={patient.id} disabled={patient.consent_status !== 'granted'}>
+                      {patient.patient_code} · {patient.full_name}{patient.consent_status !== 'granted' ? ' · consent required' : ''}
+                    </option>
+                  ))}
+                </select>
+                <Link className="patient-manage-link" to="/patients">+ Register or manage patients</Link>
+                {patientLoadError && <span className="patient-load-error" role="alert">{patientLoadError}</span>}
+              </div>
 
-          <div className="patient-name-input-group">
-            <input
-              type="text"
-              placeholder="Patient name or ID (optional)"
-              value={patientName}
-              onChange={(e) => setPatientName(e.target.value)}
-              className="patient-input"
-              disabled={busy}
-            />
+              {scanState === 'idle' && (
+                <button className="btn btn--primary scan-cta" onClick={startScan}>
+                  Start acquisition <span aria-hidden="true">↗</span>
+                </button>
+              )}
+              {busy && (
+                <button className="btn btn--ghost scan-cta" disabled>
+                  {scanState === 'initializing'
+                    ? 'Starting camera…'
+                    : scanState === 'analyzing'
+                    ? 'Processing guidance…'
+                    : `Acquiring signal / ${secondsLeft}s`}
+                </button>
+              )}
+              {(scanState === 'done' || scanState === 'error') && (
+                <button className="btn btn--ghost scan-cta" onClick={resetScan}>
+                  Run another scan
+                </button>
+              )}
+            </div>
           </div>
-
-          {scanState === 'idle' && (
-            <button className="btn btn--primary scan-cta" onClick={startScan}>
-              Start 10s scan
-            </button>
-          )}
-
-          {busy && (
-            <button className="btn btn--ghost scan-cta" disabled>
-              {scanState === 'initializing'
-                ? 'Starting camera…'
-                : scanState === 'analyzing'
-                  ? 'Processing AI…'
-                  : `Scanning (${secondsLeft}s)`}
-            </button>
-          )}
-
-          {(scanState === 'done' || scanState === 'error') && (
-            <button className="btn btn--ghost scan-cta" onClick={resetScan}>
-              Scan another patient
-            </button>
-          )}
         </section>
 
         <section className="scan-side">
           {/* Camera quality panel */}
           {cameraQuality && (
             <div className="card cam-quality-card">
-              <div className="cam-quality-header" onClick={() => setShowCamPanel((p) => !p)}>
+              <div className="cam-quality-header" onClick={() => setShowCamPanel(p => !p)}>
                 <div className="cam-quality-title-row">
                   <span className="cam-quality-label">Camera Quality</span>
                   <span
-                    className={`pill ${cameraQuality.grade === 'Excellent'
-                        ? 'pill--ok'
-                        : cameraQuality.grade === 'Good'
-                          ? 'pill--ok'
-                          : cameraQuality.grade === 'Fair'
-                            ? 'pill--pending'
-                            : 'pill--flag'
-                      }`}
+                    className={`pill ${
+                      cameraQuality.grade === 'Excellent' ? 'pill--ok'
+                      : cameraQuality.grade === 'Good' ? 'pill--ok'
+                      : cameraQuality.grade === 'Fair' ? 'pill--pending'
+                      : 'pill--flag'
+                    }`}
                   >
                     <span className="pill-dot" />
                     {cameraQuality.grade} &nbsp;·&nbsp; {cameraQuality.qualityScore}/100
@@ -1089,24 +948,14 @@ export default function ScanPage() {
             </div>
           )}
 
-          {alertScaleResult && (
-            <div
-              className={`card triage-alert-card triage-alert--${alertScaleResult.tier.toLowerCase()}`}
-              style={{
-                padding: '14px',
-                borderRadius: '8px',
-                marginBottom: '12px',
-                borderLeft: `5px solid ${alertScaleResult.tier === 'RED' ? '#ef4444' : alertScaleResult.tier === 'ORANGE' ? '#f59e0b' : '#10b981'
-                  }`,
-              }}
-            >
-              <div style={{ fontWeight: 'bold', fontSize: '15px' }}>{alertScaleResult.title}</div>
-              <div style={{ fontSize: '12px', marginTop: '4px' }}>{alertScaleResult.recommendation}</div>
-            </div>
-          )}
-
           <div className="card readout-card">
-            <p className="readout-card__title">Latest screening readout</p>
+            <div className="readout-card__header">
+              <div>
+                <span className="panel-index">RESULT / 001</span>
+                <p className="readout-card__title">Latest screening</p>
+              </div>
+              <span className="readout-state"><span className="pill-dot" /> Live</span>
+            </div>
             <div className="readout-grid">
               {READOUT_FIELDS.map((field) => (
                 <div key={field.key} className="readout-stat">
@@ -1121,72 +970,29 @@ export default function ScanPage() {
               ))}
             </div>
 
-            {spo2Result && (
-              <div style={{ marginTop: '10px', fontSize: '13px', background: 'rgba(255,255,255,0.04)', padding: '8px', borderRadius: '6px' }}>
-                🩸 <strong>SpO2 Proxy:</strong> {spo2Result.spo2}% ({spo2Result.confidence})
-              </div>
-            )}
-
-            {bpResult && (
-              <div style={{ marginTop: '10px', fontSize: '13px', background: 'rgba(255,255,255,0.04)', padding: '8px', borderRadius: '6px' }}>
-                🩺 <strong>BP (PPG trend):</strong> {bpResult.sbp}/{bpResult.dbp} mmHg ({bpResult.category})
-                {!bpResult.isCalibrated && lastCrestTimeMs && (
-                  <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <span style={{ color: 'var(--text-dim)' }}>
-                      Measure your BP with a real cuff right now, then enter it here to calibrate future scans on this device:
-                    </span>
-                    <div style={{ display: 'flex', gap: '6px' }}>
-                      <input
-                        type="number"
-                        placeholder="Systolic"
-                        value={calSbpInput}
-                        onChange={(e) => setCalSbpInput(e.target.value)}
-                        style={{ width: '80px', padding: '6px', borderRadius: '6px', border: '1px solid var(--card-border)', background: 'var(--bg)', color: 'var(--text-white)' }}
-                      />
-                      <input
-                        type="number"
-                        placeholder="Diastolic"
-                        value={calDbpInput}
-                        onChange={(e) => setCalDbpInput(e.target.value)}
-                        style={{ width: '80px', padding: '6px', borderRadius: '6px', border: '1px solid var(--card-border)', background: 'var(--bg)', color: 'var(--text-white)' }}
-                      />
-                      <button
-                        className="btn btn--primary"
-                        style={{ padding: '6px 12px', fontSize: '12px' }}
-                        onClick={() => {
-                          const sbp = parseInt(calSbpInput, 10)
-                          const dbp = parseInt(calDbpInput, 10)
-                          if (sbp > 0 && dbp > 0 && lastCrestTimeMs) {
-                            const ok = saveBpCalibration(sbp, dbp, lastCrestTimeMs)
-                            if (ok) {
-                              setCalSaved(true)
-                              setBpResult(estimateBloodPressurePTT(lastCrestTimeMs))
-                            }
-                          }
-                        }}
-                      >
-                        Save
-                      </button>
-                    </div>
-                    {calSaved && <span style={{ color: 'var(--ok)' }}>Calibration saved — future scans on this device will use it.</span>}
+            {clinicalResult && (
+              <div className="clinical-result-grid">
+                {clinicalResult.risk && (
+                  <div className={`clinical-result-card clinical-result-card--${String(clinicalResult.risk.tier).toLowerCase()}`}>
+                    <span>Alert tier</span>
+                    <strong>{clinicalResult.risk.tier}</strong>
+                    <small>{clinicalResult.risk.reasons.join(' · ') || 'No referral threshold crossed'}</small>
                   </div>
                 )}
-              </div>
-            )}
-
-            {bmiResult && (
-              <div style={{ marginTop: '10px', fontSize: '13px', background: 'rgba(255,255,255,0.04)', padding: '8px', borderRadius: '6px' }}>
-                📐 <strong>Malnutrition BMI:</strong> {bmiResult.category} (Est. BMI: {bmiResult.bmi})
+                {clinicalResult.spo2Result && <div className="clinical-result-card"><span>SpO₂ proxy</span><strong>{clinicalResult.spo2Result.spo2 ?? 'Retry'}{clinicalResult.spo2Result.spo2 ? '%' : ''}</strong><small>{clinicalResult.spo2Result.disclaimer}</small></div>}
+                {clinicalResult.rhythmResult && <div className="clinical-result-card"><span>Rhythm proxy</span><strong>{clinicalResult.rhythmResult.isIrregular ? 'Review' : 'Regular'}</strong><small>{clinicalResult.rhythmResult.message}</small></div>}
+                {clinicalResult.bpResult && <div className="clinical-result-card"><span>BP trend</span><strong>{clinicalResult.bpResult.isCalibrated ? `${clinicalResult.bpResult.sbp}/${clinicalResult.bpResult.dbp}` : 'Calibration required'}</strong><small>{clinicalResult.bpResult.note}</small></div>}
+                {clinicalResult.mode === 'anemia' && <div className="clinical-result-card"><span>Hemoglobin proxy</span><strong>{clinicalResult.hb == null ? 'Retry' : `${clinicalResult.hb} g/dL`}</strong><small>{clinicalResult.label}</small></div>}
+                {clinicalResult.mode === 'jaundice' && <div className="clinical-result-card"><span>Scleral yellow index</span><strong>{clinicalResult.yellowIndex == null ? 'Retry' : clinicalResult.yellowIndex}</strong><small>{clinicalResult.label}</small></div>}
+                {clinicalResult.mode === 'bmi' && <div className="clinical-result-card"><span>BMI proxy</span><strong>{clinicalResult.bmi == null ? 'Retry' : clinicalResult.bmi}</strong><small>{clinicalResult.category}</small></div>}
               </div>
             )}
 
             {/* Uncertainty badge */}
             {uncertainty && (
-              <div
-                className={`uncertainty-badge ${uncertainty.reliable ? 'uncertainty-badge--reliable' : 'uncertainty-badge--unreliable'
-                  }`}
-                style={{ marginTop: '10px' }}
-              >
+              <div className={`uncertainty-badge ${
+                uncertainty.reliable ? 'uncertainty-badge--reliable' : 'uncertainty-badge--unreliable'
+              }`}>
                 {uncertainty.reliable ? (
                   <>
                     <span className="uncertainty-icon">±</span>
@@ -1196,14 +1002,14 @@ export default function ScanPage() {
                   </>
                 ) : (
                   <>
-                    <span className="uncertainty-icon">⚠</span>
+                    <span className="uncertainty-icon">!</span>
                     <span>{uncertainty.message}</span>
                   </>
                 )}
               </div>
             )}
 
-            <p style={{ fontSize: '11px', color: 'var(--text-dim)', marginTop: '10px', fontStyle: 'italic' }}>
+            <p className="readout-disclaimer">
               * Pulse Variability reflects camera rPPG RMSSD autonomic signal patterns, not a clinical ECG diagnosis.
             </p>
 
@@ -1214,29 +1020,24 @@ export default function ScanPage() {
             )}
 
             {!explanation && !isAiLoading && (
-              <div className="readout-explanation" style={{ opacity: 0.85 }}>
-                <p className="explanation-title" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <span className="pill-dot" style={{ background: 'var(--accent2)' }} />
-                  Qwen & Groq AI Engine Ready
+              <div className="readout-explanation readout-explanation--standby">
+                <p className="explanation-title">
+                  <span className="pill-dot" />
+                  Guidance engine on standby
                 </p>
-                <p className="explanation-body" style={{ fontSize: '12px', color: 'var(--text-dim)' }}>
-                  Complete a 10-second camera scan to receive plain-language clinical guidance in {SUPPORTED_LANGUAGES.find((l) => l.code === selectedLang)?.name || 'English'}.
+                <p className="explanation-body">
+                  Complete a 15-second camera scan to receive plain-language screening guidance in {SUPPORTED_LANGUAGES.find((l) => l.code === selectedLang)?.name || 'English'}.
                 </p>
               </div>
             )}
 
             {explanation && !isAiLoading && (
               <div className="readout-explanation">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <p className="explanation-title">{viewMode === 'clinician' ? '🩺 Clinician Technical Summary:' : 'AI Explanation & Guidance:'}</p>
-                  <button onClick={handleVoiceReadout} className="btn btn--ghost" style={{ fontSize: '11px', padding: '2px 8px' }}>
-                    {isSpeaking ? '🔊 Stop' : '🗣️ Listen'}
-                  </button>
-                </div>
+                <p className="explanation-title">AI Explanation & Guidance:</p>
                 <p className="explanation-body">{explanation}</p>
 
                 {savedRecordId && (
-                  <div className="report-link-box" style={{ marginTop: '10px' }}>
+                  <div className="report-link-box">
                     <Link to={`/report?id=${savedRecordId}`} className="btn btn--primary report-link-btn">
                       View One-Page Report & QR →
                     </Link>
@@ -1246,14 +1047,14 @@ export default function ScanPage() {
             )}
           </div>
 
-          <div className="card offline-card" style={{ marginTop: '12px' }}>
-            <span className="pill pill--ok">
-              <span className="pill-dot" /> Offline-ready storage
-            </span>
-            <p className="offline-card__copy">
-              All scans save to local IndexedDB/browser storage immediately. Readings sync to Alibaba Cloud
-              automatically as soon as an internet signal is restored.
-            </p>
+          <div className="card offline-card">
+            <span className="offline-card__index mono">LOCAL / FIRST</span>
+            <div>
+              <p className="offline-card__title"><span className="pill-dot" /> Built for a weak signal.</p>
+              <p className="offline-card__copy">
+                Signal processing runs locally. Protected records are written only when the authenticated database is available.
+              </p>
+            </div>
           </div>
         </section>
       </div>

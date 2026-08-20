@@ -121,7 +121,7 @@ CREATE TABLE patient_records (
   -- Status & Sync
   status              TEXT DEFAULT 'ok',      -- 'ok' | 'flagged' | 'pending'
   synced              BOOLEAN DEFAULT TRUE,
-  
+
   -- Timestamps
   scanned_at          TIMESTAMPTZ NOT NULL,   -- When scan happened on device
   created_at          TIMESTAMPTZ DEFAULT NOW()
@@ -183,7 +183,7 @@ You'll write these as **Supabase Edge Functions** (Deno runtime). These replace 
 
 ### Edge Function 1: `sync-records`
 
-**Route:** `POST /functions/v1/sync-records`  
+**Route:** `POST /functions/v1/sync-records`
 **Auth:** Bearer token (Supabase JWT)
 
 **Request Body** (this is exactly what `src/lib/cloudSync.js` sends):
@@ -261,7 +261,7 @@ Deno.serve(async (req) => {
 
   // Calculate stats, check z-scores, insert anomalies...
   // ...
-  
+
   return new Response(JSON.stringify({ checked: true }))
 })
 ```
@@ -270,7 +270,7 @@ Deno.serve(async (req) => {
 
 ### Edge Function 3: `get-dashboard-summary`
 
-**Route:** `GET /functions/v1/get-dashboard-summary`  
+**Route:** `GET /functions/v1/get-dashboard-summary`
 **Auth:** Bearer token
 
 Returns aggregated stats for the supervisor dashboard:
@@ -353,7 +353,7 @@ import { supabase } from './supabase'
 export async function syncPendingRecords() {
   const records = getStoredRecords()
   const pending = records.filter((r) => !r.synced)
-  
+
   for (const record of pending) {
     await supabase.from('patient_records').upsert({
       patient_id:          record.patientId,
@@ -371,7 +371,7 @@ export async function syncPendingRecords() {
       scanned_at:          record.timestamp,
     })
   }
-  
+
   const updated = records.map((r) => ({ ...r, synced: true }))
   localStorage.setItem(STORAGE_KEY, JSON.stringify(updated))
   return updated
@@ -421,5 +421,5 @@ export async function syncPendingRecords() {
 
 ---
 
-*Document prepared by Ahmad Ali Shah for Vytal backend handoff.*  
+*Document prepared by Ahmad Ali Shah for Vytal backend handoff.*
 *Repository: https://github.com/Ahmad-Ali-Shah/Vital (branch: vytal-final-version)*

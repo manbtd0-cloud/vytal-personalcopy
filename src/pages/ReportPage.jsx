@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams, Link } from 'react-router-dom'
 import QRCode from 'qrcode'
-import { getRecordById } from '../lib/storage'
-import { SUPPORTED_LANGUAGES, getStressLabel } from '../lib/ai'
-import { downloadFhirBundle, openSmsReferral, openWhatsAppShare, speakExplanation } from '../lib/platform'
+import { screeningRepository } from '../domain/repositories.js'
+import { SUPPORTED_LANGUAGES } from '../lib/ai'
+
+const hasNumber = (value) => value !== null && value !== '' && Number.isFinite(Number(value))
 
 export default function ReportPage() {
   const [searchParams] = useSearchParams()
@@ -11,28 +12,43 @@ export default function ReportPage() {
   const [record, setRecord] = useState(null)
   const [qrDataUrl, setQrDataUrl] = useState('')
   const [copied, setCopied] = useState(false)
-  const [isSpeaking, setIsSpeaking] = useState(false)
+  const [loadError, setLoadError] = useState('')
 
   useEffect(() => {
-    const loaded = getRecordById(recordId)
-    setRecord(loaded)
-
-    const baseOrigin =
-      window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-        ? 'https://vital-cyan.vercel.app'
-        : window.location.origin
-
-    const targetUrl = `${baseOrigin}/report?id=${recordId || loaded?.id || 'P-0231'}`
-
-    QRCode.toDataURL(targetUrl, { width: 160, margin: 1, errorCorrectionLevel: 'H' })
-      .then((dataUrl) => setQrDataUrl(dataUrl))
-      .catch((err) => console.error('Failed to generate QR code', err))
+    let active = true
+    setLoadError('')
+    screeningRepository.findById(recordId)
+      .then((loaded) => {
+        if (!active) return
+        setRecord(loaded)
+        if (!loaded) return
+        const baseOrigin =
+          window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+            ? 'https://vital-cyan.vercel.app'
+            : window.location.origin
+        const targetUrl = `${baseOrigin}/report?id=${recordId || loaded.id}`
+        return QRCode.toDataURL(targetUrl, { width: 160, margin: 1, errorCorrectionLevel: 'H' })
+      })
+      .then((dataUrl) => dataUrl && active && setQrDataUrl(dataUrl))
+      .catch((error) => active && setLoadError(error.message))
+    return () => { active = false }
   }, [recordId])
 
-  if (!record) return null
+  if (loadError) return <main className="page"><p className="form-message" role="alert">{loadError}</p></main>
+  if (!record) return <main className="page"><p className="page-subtitle">Loading protected report…</p></main>
 
-  const isFlagged = record.status === 'flagged' || record.alertTier === 'RED' || record.alertTier === 'ORANGE'
+  const isFlagged = record.status === 'flagged' || ['RED', 'ORANGE'].includes(record.alertTier)
   const langName = SUPPORTED_LANGUAGES.find((l) => l.code === record.language)?.name || 'English'
+  const observations = [
+    hasNumber(record.hr) && { label: 'Heart rate', value: record.hr, unit: 'bpm' },
+    hasNumber(record.br) && { label: 'Breathing rate', value: record.br, unit: 'br/min' },
+    hasNumber(record.stress) && { label: 'Pulse variability', value: record.stress, unit: '/100' },
+    hasNumber(record.spo2) && { label: 'SpO₂ proxy', value: record.spo2, unit: '%' },
+    hasNumber(record.anemiaResult?.hb) && { label: 'Hemoglobin proxy', value: record.anemiaResult.hb, unit: 'g/dL' },
+    hasNumber(record.jaundiceResult?.yellowIndex) && { label: 'Scleral yellow index', value: record.jaundiceResult.yellowIndex, unit: 'index' },
+    hasNumber(record.bmiResult?.bmi) && { label: 'BMI proxy', value: record.bmiResult.bmi, unit: 'kg/m²' },
+    record.bpResult?.isCalibrated && { label: 'BP trend', value: `${record.bpResult.sbp}/${record.bpResult.dbp}`, unit: 'mmHg' },
+  ].filter(Boolean)
 
   function handleCopyLink() {
     navigator.clipboard.writeText(window.location.href)
@@ -40,24 +56,15 @@ export default function ReportPage() {
     setTimeout(() => setCopied(false), 2000)
   }
 
-  function handleVoiceReadout() {
-    if (isSpeaking) {
-      speakExplanation('', 'en') // cancels speech
-      setIsSpeaking(false)
-      return
-    }
-    setIsSpeaking(true)
-    speakExplanation(record.explanation, record.language || 'en', () => setIsSpeaking(false))
-  }
-
   return (
     <main className="page report-page">
       <div className="report-header">
         <div>
-          <p className="eyebrow">Clinical Triage & Referral Record</p>
-          <h1 className="page-title">Printable & Exportable Patient Record</h1>
+          <p className="eyebrow">Referral record / print ready</p>
+          <h1 className="page-title">A record that travels.</h1>
           <p className="page-subtitle">
-            Includes QR code, Web Speech voice readouts, SMS fallback, WhatsApp sharing, and HL7 FHIR R4 JSON export.
+            Every screening gets a printable page with a QR code back to the full record — so a paper
+            trail exists even where printers and signal both come and go.
           </p>
         </div>
         <Link to="/dashboard" className="btn btn--ghost">
@@ -67,6 +74,10 @@ export default function ReportPage() {
 
       <div className="report-sheet-wrap">
         <div className="report-sheet" id="report-print-area">
+          <div className="report-sheet__protocol mono">
+            <span>REPORT / 01</span>
+            <span>{String(record.mode || record.source || 'camera').replaceAll('_', ' ').toUpperCase()} SCREENING</span>
+          </div>
           <div className="report-sheet__header">
             <div>
               <p className="report-sheet__brand">VYTAL</p>
@@ -87,7 +98,7 @@ export default function ReportPage() {
               <p className="report-sheet__patient-name">{record.name}</p>
               <p className="report-sheet__label mono">{record.patientId || record.id}</p>
             </div>
-            <div style={{ textAlign: 'right' }}>
+            <div className="report-sheet__date">
               <p className="report-sheet__label">Screened Date</p>
               <p className="report-sheet__patient-name">
                 {new Date(record.timestamp || Date.now()).toLocaleString('en-GB', {
@@ -95,83 +106,54 @@ export default function ReportPage() {
                   timeStyle: 'short',
                 })}
               </p>
-              <p className="report-sheet__label mono">Lang: {langName} | Age: {record.ageGroup || 'adult'}</p>
+              <p className="report-sheet__label mono">Lang: {langName}</p>
             </div>
           </div>
 
           <div className="report-sheet__vitals">
-            <div>
-              <p className="report-sheet__label">Heart rate</p>
-              <p className="report-sheet__vital-value mono">
-                {record.hr} <span>bpm</span>
-              </p>
-            </div>
-            <div>
-              <p className="report-sheet__label">Breathing rate</p>
-              <p className="report-sheet__vital-value mono">
-                {record.br || 16} <span>br/min</span>
-              </p>
-            </div>
-            <div>
-              <p className="report-sheet__label">Stress Index</p>
-              <p className="report-sheet__vital-value">
-                {record.stressLabel || getStressLabel(record.stress)} ({record.stress ?? 0}/100)
-              </p>
-            </div>
-            {record.spo2 && (
-              <div>
-                <p className="report-sheet__label">SpO2 Proxy</p>
+            {observations.map((observation) => (
+              <div key={observation.label}>
+                <p className="report-sheet__label">{observation.label}</p>
                 <p className="report-sheet__vital-value mono">
-                  {record.spo2} <span>%</span>
+                  {observation.value} <span>{observation.unit}</span>
                 </p>
               </div>
-            )}
+            ))}
           </div>
+
+          {record.alertTier && (
+            <p className="report-sheet__label">Unified alert tier: <strong>{record.alertTier}</strong></p>
+          )}
 
           {isFlagged ? (
             <div className="report-sheet__flag">
-              ⚠️ <strong>CLINICAL REFERRAL RECOMMENDED [{record.alertTier || 'ALERT'}]</strong> — Patient vitals indicate follow-up required.
+              <span className="report-status-icon">!</span>
+              <span><strong>CLINICAL REVIEW RECOMMENDED</strong> — This screening crossed a configured confirmation threshold.</span>
             </div>
           ) : (
             <div className="report-sheet__normal">
-              ✓ <strong>VITALS IN NORMAL RESTING RANGE</strong> — No urgent clinical referral indicated.
+              <span className="report-status-icon">✓</span>
+              <span><strong>NO REVIEW THRESHOLD CROSSED</strong> — Continue routine monitoring and assess symptoms clinically.</span>
             </div>
           )}
 
           <div className="report-sheet__explanation">
-            <p className="report-sheet__label">AI Triage Explanation</p>
-            <p>{record.explanation}</p>
+            <p className="report-sheet__label">Clinical guidance</p>
+            <p>{record.explanation || 'No generated explanation is available for this screening.'}</p>
           </div>
 
           <p className="report-sheet__disclaimer">
-            * Not a standalone medical diagnostic device. Vytal explains and flags vitals. Clinical decisions remain with a registered medical practitioner.
+            * Camera-derived results are screening proxies, not diagnoses or medical-device readings. Confirm abnormal or symptomatic findings with approved equipment and a qualified clinician.
           </p>
         </div>
       </div>
 
-      <div className="report-actions" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '16px' }}>
+      <div className="report-actions">
         <button className="btn btn--primary" onClick={() => window.print()}>
-          🖨️ Print Report
+          Print this report <span aria-hidden="true">↗</span>
         </button>
-
-        <button className="btn btn--ghost" onClick={handleVoiceReadout}>
-          {isSpeaking ? '🔊 Stop Voice' : '🗣️ Voice Readout'}
-        </button>
-
-        <button className="btn btn--ghost" onClick={() => openWhatsAppShare(record, window.location.href)}>
-          💬 WhatsApp Share
-        </button>
-
-        <button className="btn btn--ghost" onClick={() => openSmsReferral('', record)}>
-          📱 SMS Referral
-        </button>
-
-        <button className="btn btn--ghost" onClick={() => downloadFhirBundle(record)}>
-          📂 FHIR R4 JSON Export
-        </button>
-
         <button className="btn btn--ghost" onClick={handleCopyLink}>
-          {copied ? '✓ Copied!' : '🔗 Copy Link'}
+          {copied ? 'Link copied' : 'Copy record link'}
         </button>
       </div>
     </main>

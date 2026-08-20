@@ -14,7 +14,7 @@ const LOINC = {
 
 /**
  * Build an HL7 FHIR R4 Observation resource from a Vytal scan record.
- * 
+ *
  * @param {object} record - { patientId, hr, br, stress, spo2, timestamp }
  * @returns {object} FHIR Bundle (JSON-serialisable)
  */
@@ -57,7 +57,7 @@ export function buildFhirBundle(record) {
 
 /**
  * Download a FHIR JSON bundle as a file.
- * 
+ *
  * @param {object} record
  */
 export function downloadFhirBundle(record) {
@@ -76,7 +76,7 @@ export function downloadFhirBundle(record) {
 /**
  * Open the device SMS composer pre-filled with a referral summary.
  * Uses the RFC 5724 sms: URI scheme.
- * 
+ *
  * @param {string} recipientPhone - Supervisor or clinic phone number
  * @param {object} record - Scan record
  */
@@ -100,7 +100,7 @@ export function openSmsReferral(recipientPhone, record) {
 
 /**
  * Open WhatsApp Click-to-Chat with a patient summary message.
- * 
+ *
  * @param {object} record
  * @param {string} reportUrl - Full URL to the Vytal report
  */
@@ -127,7 +127,7 @@ export function openWhatsAppShare(record, reportUrl) {
 /**
  * Voice readout of scan results using Web Speech API.
  * Reads the AI explanation aloud in the patient's selected language.
- * 
+ *
  * @param {string} text - Text to read aloud
  * @param {string} langCode - BCP-47 language code ('en', 'ur', 'ar', etc.)
  * @param {function} [onEnd] - Callback when speech finishes
@@ -168,7 +168,7 @@ export function speakExplanation(text, langCode = 'en', onEnd = null) {
 
 /**
  * Check if Web Speech API has a voice available for the given language.
- * 
+ *
  * @param {string} langCode
  * @returns {boolean}
  */

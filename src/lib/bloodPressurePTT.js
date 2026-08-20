@@ -20,21 +20,20 @@
  * for face-to-finger PTT.
  */
 
-const CALIBRATION_KEY = 'vytal_bp_calibration_v1'
-
 /**
- * Read the user's saved calibration (their own crest time + cuff-measured
- * BP at that same session), if one has been saved on this device.
+ * Validate an owner-scoped calibration loaded by the caller. Persistence
+ * belongs to the protected account baseline store, never browser storage.
  * @returns {{ baselineSbp: number, baselineDbp: number, baselineCrestTimeMs: number, savedAt: string } | null}
  */
-export function getBpCalibration() {
-  try {
-    const raw = localStorage.getItem(CALIBRATION_KEY)
-    return raw ? JSON.parse(raw) : null
-  } catch (e) {
-    console.warn('Could not read BP calibration', e)
-    return null
-  }
+export function getBpCalibration(calibration = null) {
+  if (!calibration) return null
+  const baselineSbp = Number(calibration.baselineSbp)
+  const baselineDbp = Number(calibration.baselineDbp)
+  const baselineCrestTimeMs = Number(calibration.baselineCrestTimeMs)
+  if (!Number.isFinite(baselineSbp) || baselineSbp < 70 || baselineSbp > 250) return null
+  if (!Number.isFinite(baselineDbp) || baselineDbp < 40 || baselineDbp > 150) return null
+  if (!Number.isFinite(baselineCrestTimeMs) || baselineCrestTimeMs < 40 || baselineCrestTimeMs > 400) return null
+  return { baselineSbp, baselineDbp, baselineCrestTimeMs, savedAt: calibration.savedAt || null }
 }
 
 /**
@@ -45,30 +44,16 @@ export function getBpCalibration() {
  * rest and after mild exertion) — see note in estimateBloodPressurePTT.
  */
 export function saveBpCalibration(sbp, dbp, crestTimeMs) {
-  if (!sbp || !dbp || !crestTimeMs) return false
-  try {
-    localStorage.setItem(
-      CALIBRATION_KEY,
-      JSON.stringify({
-        baselineSbp: sbp,
-        baselineDbp: dbp,
-        baselineCrestTimeMs: crestTimeMs,
-        savedAt: new Date().toISOString(),
-      })
-    )
-    return true
-  } catch (e) {
-    console.warn('Could not save BP calibration', e)
-    return false
-  }
+  return getBpCalibration({
+    baselineSbp: sbp,
+    baselineDbp: dbp,
+    baselineCrestTimeMs: crestTimeMs,
+    savedAt: new Date().toISOString(),
+  })
 }
 
 export function clearBpCalibration() {
-  try {
-    localStorage.removeItem(CALIBRATION_KEY)
-  } catch (e) {
-    console.warn('Could not clear BP calibration', e)
-  }
+  return null
 }
 
 /**
@@ -82,13 +67,13 @@ export function clearBpCalibration() {
  * @returns {{ sbp: number, dbp: number, category: string, note: string, isCalibrated: boolean }}
  */
 export function estimateBloodPressurePTT(crestTimeMs, calibration = null) {
-  const cal = calibration || getBpCalibration()
+  const cal = getBpCalibration(calibration)
 
   if (!crestTimeMs || crestTimeMs < 40 || crestTimeMs > 400) {
     return {
-      sbp: cal?.baselineSbp ?? 120,
-      dbp: cal?.baselineDbp ?? 80,
-      category: 'Normal Baseline (Uncalibrated)',
+      sbp: cal?.baselineSbp ?? null,
+      dbp: cal?.baselineDbp ?? null,
+      category: cal ? 'Saved cuff baseline' : 'Uncalibrated — No Estimate',
       note: 'Could not measure a clear pulse waveform this scan — showing your last saved baseline, if any.',
       isCalibrated: Boolean(cal),
     }
@@ -96,8 +81,8 @@ export function estimateBloodPressurePTT(crestTimeMs, calibration = null) {
 
   if (!cal) {
     return {
-      sbp: 120,
-      dbp: 80,
+      sbp: null,
+      dbp: null,
       category: 'Uncalibrated — Save a Baseline',
       note:
         'This is a single-site PPG trend proxy, not a real blood pressure measurement, and has no meaningful default until calibrated. ' +

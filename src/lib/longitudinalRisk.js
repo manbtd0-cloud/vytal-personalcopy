@@ -8,7 +8,7 @@
 
 /**
  * Generate SVG sparkline path from an array of values.
- * 
+ *
  * @param {number[]} values
  * @param {number} width
  * @param {number} height
@@ -35,7 +35,7 @@ export function generateSparklinePath(values, width = 120, height = 32, pad = 3)
 /**
  * Compute a simple least-squares slope for an array of values.
  * A positive slope means the metric is trending up over visits.
- * 
+ *
  * @param {number[]} values
  * @returns {number} slope (change per visit)
  */
@@ -60,7 +60,7 @@ function computeSlope(values) {
 /**
  * Evaluate longitudinal vitals trend and produce a risk escalation assessment.
  * Requires at least 3 scan records to produce a meaningful trend.
- * 
+ *
  * @param {Array<{ hr, br, stress, timestamp }>} scanHistory - Ordered oldest-first
  * @param {{ tier: string }} currentAlertTier - Output of evaluateAlertScale on latest scan
  * @returns {{ trendTier: string|null, trendLabel: string, slopeHr: number, slopeBr: number, sparklineHr: string, sparklineBr: string, message: string }}

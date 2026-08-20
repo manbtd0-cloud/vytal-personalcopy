@@ -40,7 +40,7 @@ Captures a close-up image of the lower palpebral conjunctiva (the inner lower ey
 4. Compute the "high hue ratio":
      For each pixel in the ROI, convert RGB -> HSV.
      high_hue_ratio = (fraction of pixels with hue in the paper's
-                        defined "high hue" band) 
+                        defined "high hue" band)
      (exact band boundaries are defined in the Suner 2021 derivation
       paper — pull the precise HSV thresholds from that paper before
       implementing, they are not restated in the 2024 validation paper)

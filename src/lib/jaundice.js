@@ -94,7 +94,7 @@ function estimateGrayWorldCorrection(ctx) {
 
 /**
  * Analyze sclera (white of eye) for yellowing (icterus / bilirubin elevation).
- * 
+ *
  * @param {CanvasRenderingContext2D} ctx - Canvas context with captured sclera ROI
  * @param {object} roi - { x, y, w, h }
  * @returns {{ isJaundiced: boolean, yellowIndex: number, label: string, recommendation: string }}
@@ -103,9 +103,10 @@ export function analyzeScleralIcterus(ctx, roi) {
   if (!ctx || !roi || roi.w <= 0 || roi.h <= 0) {
     return {
       isJaundiced: false,
-      yellowIndex: 12,
-      label: 'Normal Sclera Chromaticity',
-      recommendation: 'Sclera appears clear without significant icterus.',
+      yellowIndex: null,
+      tier: 'UNKNOWN',
+      label: 'Low Confidence — Retry Scan',
+      recommendation: 'No valid sclera capture was available. Keep both eyes open in even lighting and retry.',
     }
   }
 
@@ -136,7 +137,17 @@ export function analyzeScleralIcterus(ctx, roi) {
     totalScleraPixels++
   }
 
-  const yellowRatio = totalScleraPixels > 0 ? yellowPixelCount / totalScleraPixels : 0.05
+  if (totalScleraPixels < 400) {
+    return {
+      isJaundiced: false,
+      yellowIndex: null,
+      tier: 'UNKNOWN',
+      label: 'Low Confidence — Retry Scan',
+      recommendation: 'Not enough well-lit sclera pixels were visible. Reframe both eyes in even lighting and retry.',
+    }
+  }
+
+  const yellowRatio = yellowPixelCount / totalScleraPixels
   const yellowIndex = Math.round(yellowRatio * 100)
 
   const isJaundiced = yellowIndex >= 22
@@ -144,6 +155,7 @@ export function analyzeScleralIcterus(ctx, roi) {
   return {
     isJaundiced,
     yellowIndex,
+    tier: isJaundiced ? 'ORANGE' : 'GREEN',
     label: isJaundiced ? 'Scleral Icterus Detected (Elevated Bilirubin Proxy)' : 'Normal Sclera Chromaticity',
     recommendation: isJaundiced
       ? 'REFERRAL RECOMMENDED: Yellowing detected on sclera region. Refer for serum bilirubin blood testing.'

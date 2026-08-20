@@ -1,4 +1,10 @@
-# Vytal — Status & Roadmap
+# Vytal — Historical clinical-branch status & roadmap
+
+> **Superseded for integration decisions:** This document records work performed on
+> `vytal-final-version` before the secure-backend merge. The current reconciled status is
+> [`VYTAL_BABY_BOSS_STATUS.md`](./VYTAL_BABY_BOSS_STATUS.md). In particular, browser-persisted
+> calibration, Alibaba clinical sync, client-side population surveillance, and simulated wearable
+> data described below are not active production behavior on `baby-boss`.
 
 **Branch:** `vytal-final-version`
 **Last updated:** 2026-08-12
@@ -143,4 +149,3 @@ Worked through the whole remaining audit list. Every item is either done or has 
 - True two-site PTT — still architecturally blocked, see §2.6.
 - P4 validation/bench protocols — needs real-world data collection, not buildable in a sandbox.
 - **On-device verification** — same caveat as round 2: none of this was visually confirmed, only build-checked. This is now three rounds of changes across every `src/lib/` module without a single real camera test. Strongly recommend a full manual pass through every scan mode before treating any of this as production-ready.
-

@@ -85,7 +85,7 @@ function computeSampleEntropy(rrIntervals, m = 2, rFactor = 0.2) {
 
 /**
  * Check beat-to-beat timing intervals for AFib-like irregular rhythm signatures.
- * 
+ *
  * @param {number[]} beatTimesMs - Array of beat peak timestamps in milliseconds
  * @param {string} mode - Capture mode ('face' or 'fingertip')
  * @returns {{ isIrregular: boolean, label: string, rmssd: number|null, pnn50: number|null, message: string }}

@@ -1,13 +1,13 @@
-#  Vytal (Vital)
+# 🩺 Vytal (Vital)
 ### Camera-Based Vitals Screening & AI Triage Platform
 
-> **Bano Qabil × Alibaba Cloud AI Hackathon 2026 Submission**
+> **P@SHA ICT Awards & Hackathon Submission**
 >
-> **Theme:** Healthcare & Community Health Triage
+> **Theme:** Healthcare, Community Health Triage & AI Technology
 
 ---
 
-##  Repository
+## 🔗 Repository
 
 **GitHub:** https://github.com/Ahmad-Ali-Shah/Vital
 
@@ -17,515 +17,234 @@
 
 Millions of people living in rural and underserved communities lack access to basic medical equipment such as pulse oximeters, ECG devices, and blood pressure monitors. Community Health Workers (CHWs) are often the first—and sometimes only—healthcare providers available, yet they must make critical decisions with limited diagnostic tools.
 
-Research also shows that **40–60% of rural patients requiring follow-up care never complete referrals**, leading to delayed treatment and preventable complications.
+Research shows that **40–60% of rural patients requiring follow-up care never complete referrals**, leading to delayed treatment and preventable complications.
 
-**Vytal** addresses these challenges by transforming an ordinary smartphone into an AI-assisted health screening device.
+**Vytal** addresses these challenges by transforming an ordinary smartphone into a research-backed AI health screening device.
 
-Using **remote Photoplethysmography (rPPG)**, Vytal estimates vital signs directly from a smartphone camera, provides multilingual AI explanations, works completely offline when needed, and maintains a persistent referral queue so patient records are never lost.
+Using **remote Photoplethysmography (rPPG)** and **contact PPG**, Vytal estimates vital signs directly from a smartphone or webcam camera, reports an honest reading uncertainty (±bpm margin), provides multilingual guidance, performs signal processing locally, and maintains a protected patient-to-referral care loop when connected to its secure backend.
 
 The platform is designed specifically for:
 
-- Rural health clinics
-- Community Health Workers (CHWs)
-- NGO medical camps
-- Disaster relief operations
-- Mobile healthcare units
+- Rural health clinics & Community Health Workers (CHWs)
+- NGO medical camps & Mobile healthcare units
+- Disaster relief operations & Low-resource triage
 - Areas with limited internet connectivity
 
 ---
 
 # Key Features
 
-##  Dual-Mode Camera-Based Vital Screening
+## 🔬 Dual-Mode Camera-Based Vital Screening
 
-Vytal supports two independent scanning methods to maximize compatibility across different devices and environments.
+Vytal supports two independent, research-grounded scanning methods to maximize compatibility across devices and environments.
 
-###  Face Scan Mode
+### 👤 Face Scan Mode (rPPG)
 
-Uses **remote Photoplethysmography (rPPG)** to estimate vital signs by analyzing subtle skin color changes captured by the front camera.
+Uses **remote Photoplethysmography (rPPG)** to estimate vital signs by tracking subtle, pulse-induced skin color variations captured by the front camera.
 
-Features include:
-
-- MediaPipe Face Detection
-- Dynamic Face Oval Guide
-- Automatic face alignment
-- Live scan quality monitoring
-- CHROM Algorithm
-- Goertzel Frequency Analysis
-- Real-time pulse waveform visualization
-
-Live guidance messages include:
-
-- Face not detected
-- Position face inside guide
-- Perfect! Hold still for scan
+- **MediaPipe Face Mesh**: Precise facial ROI tracking excluding eyes/mouth.
+- **Dynamic Face Oval Guide**: Real-time position guidance and alignment detection.
+- **CHROM (de Haan & Jeanne, 2013) & POS (Wang et al., 2016)**: Dual-plane skin tone projection algorithms.
+- **Goertzel Frequency Transform**: Efficient spectral estimation with parabolic sub-BPM peak interpolation.
+- **Live Pulse Waveform**: Real-time canvas rendering of the smoothed BVP pulse wave.
 
 ---
 
-###  Fingertip + Flash Mode
+### 👆 Fingertip + Flash Mode (Contact PPG)
 
-For environments with poor lighting or unsupported front cameras, users can place their fingertip over the rear camera and flashlight.
+For environments with poor lighting or unsupported front cameras, users place their fingertip directly over the camera lens and LED flash.
 
-Features include:
-
-- Dedicated finger placement overlay
-- Red-channel light intensity analysis
-- Contact quality detection
-- Automatic scan readiness validation
-
-Live guidance includes:
-
-- Turn flash on
-- Place fingertip over camera
-- Press firmly
-- Perfect! Hold still for scan
+- **Continuous 30 FPS Sampling**: Tissue absorption detection ($R > B$ blue light absorption check) ensures zero dropped frames, preserving temporal interval accuracy.
+- **Inverted Green Channel PPG (Gudi et al., 2020)**: Evaluates direct inverted green absorbance ($detrend(-g)$) alongside POS/CHROM for gold-standard contact PPG pulse signal extraction.
+- **Camera Stabilization Locks**: Automatically locks camera track constraints (`torch`, `exposureMode`, `whiteBalanceMode`, `focusMode`) to prevent gain/exposure oscillation during finger contact.
 
 ---
 
-##  Clinical Research Features (29 Integrated Algorithms)
+## 🎯 Honest Uncertainty & Camera Quality Engine
 
-###  SpO2 Proxy Estimation
-Uses the Ratio-of-Ratios ($RoR = (AC/DC)_{red} / (AC/DC)_{blue}$) rPPG method to estimate blood oxygen saturation with honest confidence disclaimers (`src/lib/spo2.js`).
+Rather than displaying a "black-box" number, Vytal computes a transparent error margin ($\pm N\text{ bpm}$) and camera quality grade grounded in empirical rPPG literature:
 
-###  AFib & Irregular Heartbeat Flagging
-Analyzes inter-beat interval ($RR$) timing variance via RMSSD (>100ms) and pNN50 (>0.30) to flag potential irregular cardiac rhythms for clinical ECG confirmation (`src/lib/afib.js`).
-
-###  3-Level Triage Alert Scale
-Replaces binary flags with **GREEN** (Normal), **YELLOW** (Monitor), **ORANGE** (Same-Day Referral), and **RED** (Urgent Transfer) alert levels, powered by WHO IMCI and PALS clinical reference guidelines (`src/lib/alertScale.js`).
-
-###  Anemia & Conjunctival Pallor Screening
-Analyzes lower palpebral conjunctiva ROI in HSV color space to estimate hemoglobin (Hb g/dL) levels (`src/lib/anemia.js`).
-
-###  Jaundice & Scleral Icterus Analysis
-Segments the white of the eye (sclera) to measure yellowing and chromaticity shifts indicative of elevated bilirubin (`src/lib/jaundice.js`).
-
-### 📱 Pediatric & Pregnancy Modes
-Age-banded threshold swapping for adults, children, toddlers, and infants, with maternal baseline adjustments for 3rd trimester physiology (`src/lib/alertScale.js`).
-
-###  Pulse Transit Time (PTT) Blood Pressure
-Estimates Systolic and Diastolic BP trends based on pulse wave velocity delay (`src/lib/bloodPressurePTT.js`).
-
-###  Anthropometric Malnutrition & BMI Screening
-Computes body framing shoulder-to-height proportions to estimate BMI and screen for Severe Acute Malnutrition (SAM) (`src/lib/bmiEstimate.js`).
-
-### 🌐 Interoperability & Platform Deployment
-Generates HL7 FHIR R4 `Observation` JSON bundles, DHIS2 Tracker events, Web Speech API spoken readouts, and native SMS / WhatsApp sharing triggers (`src/lib/platform.js`).
-
-### 📊 Longitudinal Risk & Population Anomaly Detection
-Uses least-squares multi-visit trend regression and Shewhart SPC statistical anomaly triggers for regional outbreak surveillance (`src/lib/longitudinalRisk.js` & `src/lib/populationAnomaly.js`).
+- **Camera Hardware Diagnostics**: Reads `track.getCapabilities()` and `track.getSettings()` for FPS, resolution, sensor tier, and LED torch availability.
+- **Real-Time Environment Sensing**: Detects overexposure (>215 average pixel brightness), lighting flicker, and fast head/finger motion via inter-frame variance analysis.
+- **Uncertainty Margin Badge**: Displays an honest $\pm\text{bpm}$ margin on every reading; flags unusable signals when uncertainty exceeds the 8 bpm blind-guess floor.
 
 ---
 
-##  Live PPG Signal Visualization
+## 🧠 AI Clinical Assistant
 
-During every scan, Vytal displays a live waveform representing the captured PPG signal.
+Converts technical metrics into clear, empathetic health guidance.
 
-This helps users immediately understand whether the signal quality is sufficient before measurements are completed.
-
----
-
-#  AI Clinical Assistant
-
-Vytal includes an AI-powered explanation layer that converts technical health metrics into language patients can easily understand.
-
-Supported AI Providers:
-
-- Alibaba Cloud DashScope (Qwen)
-- Groq (LLaMA 3.3 70B)
-
-Capabilities include:
-
-- Plain-language patient explanations
-- Technical Clinician View summaries with LOINC mapping & differential diagnosis hints
-- Multi-tier AI coaching scripts
-- Local language support
-- Safe offline fallback rules
-
-If no internet connection or API key is available, Vytal automatically switches to its built-in clinical rule engine without interrupting the workflow.
+- **Server-side AI providers**: Alibaba Cloud DashScope (Qwen) or Groq, selected behind a protected Supabase Edge Function; provider keys never enter browser code.
+- **Capabilities**: Plain-language explanations, clinical risk flagging, follow-up advice.
+- **Offline Rule Engine**: Automatic fallback to local clinical decision rules when offline.
 
 ---
 
-#  Multilingual Support
+## 🌍 Multilingual Support
 
-The application currently supports:
+Supported languages:
+- 🇬🇧 English | 🇵🇰 Urdu (اردو) | 🇦🇫 Pashto (پښتو) | 🇵🇰 Sindhi (سنڌي) | 🇸🇦 Arabic (العربية)
 
-- 🇬🇧 English
-- 🇵🇰 Urdu (اردو)
-- 🇦🇫 Pashto (پښتو)
-- 🇵🇰 Sindhi (سنڌي)
-- 🇸🇦 Arabic (العربية)
-- 🇰🇪 Swahili (Kiswahili)
-- 🇮🇳 Hindi (हिन्दी)
-- 🇧🇩 Bengali (বাংলা)
+## 🧪 Extended Clinical Screening Proxies
 
----
-
-#  Offline-First Architecture
-
-Healthcare workers frequently operate in locations with unreliable internet access.
-
-For this reason, every completed scan is immediately stored locally.
-
-Storage technologies include:
-
-- IndexedDB
-- LocalStorage
-
-Features:
-
-- Offline patient records
-- Automatic queue creation
-- Pending sync tracking
-- Local-first workflow
-- No data loss during network outages
+- **Anemia proxy:** landmark-tracked conjunctival capture with a low-confidence `UNKNOWN` result instead of false reassurance.
+- **Jaundice proxy:** ambient-corrected scleral yellow-index capture with explicit retry handling.
+- **SpO₂ and rhythm proxies:** quality-gated camera estimates that require approved-device/ECG confirmation.
+- **BMI/malnutrition proxy:** face-scale anthropometric estimate; not a substitute for measured height and weight.
+- **Blood-pressure trend:** available only with explicit owner-scoped calibration; no uncalibrated 120/80 value is fabricated.
+- **Age-aware alert policy:** unifies pulse, breathing, SpO₂, rhythm, anemia, jaundice, BMI, pregnancy, and programme context into a review tier.
 
 ---
 
-# ☁ Alibaba Cloud Integration
+## 🔐 Secure Dynamic Database & Accounts
 
-When connectivity becomes available, queued records can be synchronized with Alibaba Cloud services.
+- **Supabase Auth + PostgreSQL RLS**: Profile, contact, emergency contact, screening, vital,
+  invoice, and donation rows are restricted to their authenticated owner inside the database.
+- **Consent-First Patient Register**: Each person receives an owner-scoped patient code. A new
+  screening cannot begin until an active consent record is linked to the selected patient.
+- **Closed-Loop Referrals**: Flagged screenings automatically enter a tracked workflow from flagged,
+  referred, contacted, and appointment booked through completion. Status changes also create an
+  append-only audit event that browser clients cannot edit or delete.
+- **Extensible Vital Schema**: New measurements are stored as metric observations, so the model can
+  add SpO2, blood-pressure trends, anemia/jaundice proxies, BMI, temperature, or future metrics without
+  hardcoding new patient columns.
+- **No Persistent PHI in Browser Storage**: Unconfigured preview mode is memory-only. Production
+  health records use the protected database instead of `localStorage`.
+- **QR Code Referral Reports**: Generates printable single-page reports with embedded record QR codes.
 
-Designed integrations include:
+## 💳 Billing & Donations
 
-- Alibaba Cloud DashScope
-- Function Compute
-- Object Storage Service (OSS)
-- Tablestore
+- Server-owned account products, account-linked invoices, and donation history.
+- Stripe-hosted Checkout boundary: card data never enters VYTAL.
+- Signed, retry-safe webhook processing validates stored amount/currency and controls paid/failed
+  status and receipt URLs.
+- Per-account limits protect payment and AI endpoints from request abuse.
+- Provider adapter boundary ready for separately approved JazzCash or Easypaisa merchant integration.
 
-This enables scalable cloud storage while preserving offline usability.
+## ⚡ Backend Performance
 
----
+- Bounded newest-first patient, referral, screening, invoice, and donation queries.
+- Composite/partial PostgreSQL indexes matched to clinical and referral access paths.
+- One-query referral/patient loading and an atomic Stripe webhook state transition.
+- Reused Edge Function clients, bounded request bodies, idempotency, and indexed rate-limit cleanup.
+- Complexity decisions and production measurement guidance are documented in
+  [docs/PERFORMANCE_OPTIMIZATION.md](./docs/PERFORMANCE_OPTIMIZATION.md).
 
-#  Community Health Worker Dashboard
+## 🎓 Computer Science Architecture
 
-The dashboard provides a centralized patient management interface.
-
-Features include:
-
-- Patient search
-- Patient history with SVG sparkline trend graphs
-- Triage alert filtering
-- Offline queue monitoring
-- Pending synchronization tracking
-
-Available filters:
-
-- 🟢 Normal
-- 🔴 Needs Follow-up
-- 🟡 Pending Sync
-
----
-
-#  Printable Referral Report
-
-Every completed scan can generate a professional one-page referral report.
-
-The report includes:
-
-- Patient information
-- Scan summary & SpO2 proxy
-- Estimated vital signs & Alert Tier
-- AI clinical explanation
-- Web Speech voice readout button
-- HL7 FHIR R4 JSON export download
-- SMS referral & WhatsApp sharing triggers
-- QR Code linking to patient record
-- Print-optimized layout
-
-The page uses dedicated `@media print` styling for clean printing on both A4 paper and thermal printers.
+VYTAL now demonstrates OOP/SOLID and design patterns, streaming data structures, referral graph and
+heap algorithms, resilient HTTP and Realtime WebSocket behavior, Web Worker/TypedArray/bitmask memory
+concepts, and normalized transactional database design with cursor pagination. The implementation map,
+complexities, tests, and honest limitations are in
+[docs/COMPUTER_SCIENCE_ARCHITECTURE.md](./docs/COMPUTER_SCIENCE_ARCHITECTURE.md).
 
 ---
 
-#  Signal Processing Pipeline
-
-The physiological signal pipeline consists of multiple stages:
+# 📐 Signal Processing Pipeline
 
 ```
-Camera Frames
-      │
-      ▼
-Face Detection / Finger Detection
-      │
-      ▼
-ROI Extraction
-      │
-      ▼
-RGB Signal Processing
-      │
-      ▼
-CHROM Algorithm
-      │
-      ▼
-Goertzel Frequency Analysis
-      │
-      ▼
-Estimated Heart Rate & SpO2 Proxy
-      │
-      ▼
-AI Clinical Interpretation & Alert Scale
-      │
-      ▼
-Dashboard & Referral Report
+            User Camera Input
+                   │
+      ┌────────────┴────────────┐
+      ▼                         ▼
+   Face Mode              Fingertip Mode
+ (MediaPipe ROI)        (Tissue Abs. R > B)
+      │                         │
+      └────────────┬────────────┘
+                   ▼
+      Uniform 30 Hz Resampling
+                   ▼
+  Multi-Channel Extraction & Selection
+   ├─ CHROM (de Haan & Jeanne, 2013)
+   ├─ POS (Wang et al., 2016)
+   └─ Inverted Green PPG (Gudi et al., 2020)
+                   ▼
+   Hann-Weighted Bandpass Filter (0.5–4.0 Hz)
+                   ▼
+  Goertzel Spectrum + Parabolic Interpolation
+   └─ Sub-Harmonic Rejection (HR / 2 Check)
+                   ▼
+    Stabilisation: EMA + Trimmed Mean + SNR Weighting
+                   ▼
+   Sub-Sample Peak Timing ──► RMSSD & Stress Index
+                   ▼
+   Camera Assessment & Honest Uncertainty (±N bpm)
+                   ▼
+   Multilingual AI Triage & Printable Referral
 ```
 
 ---
 
-#  Technology Stack
+# 🔬 Scientific Foundations & References
+
+1. **De Haan, G., & Jeanne, V. (2013)**. *Robust pulse rate from chrominance-based rPPG*. IEEE TBME.
+2. **Wang, W. et al. (2016)**. *Algorithmic principles of remote PPG*. IEEE TBME.
+3. **Gudi, A., Bittner, M., & van Gemert, J. (2020)**. *Real-time Webcam Heart-Rate and Variability Estimation with Clean Ground Truth*. MDPI Applied Sciences.
+4. **Malik, M. et al. (1996)**. *Heart rate variability: Standards of measurement, physiological interpretation, and clinical use*. European Heart Journal.
+5. **McDuff, D. et al. (2020)**. *rPPG benchmarking under compression and ambient lighting*. IEEE EMBC.
+
+---
+
+# 🛠️ Technology Stack
 
 | Category | Technologies |
 |-----------|--------------|
 | Frontend | React 18, Vite |
-| Styling | CSS3, Custom Clinical Design System |
-| Camera APIs | HTML5 Camera, Canvas API |
-| Face Detection | MediaPipe Tasks Vision |
-| Signal Processing | CHROM Algorithm, Goertzel Algorithm |
-| AI Models | Qwen (Alibaba DashScope), Groq LLaMA 3.3 70B |
-| Hardware & Web APIs | Web Bluetooth (BLE), Web USB, Web Speech API |
-| Interoperability | HL7 FHIR R4, DHIS2 Tracker Format |
-| Storage | IndexedDB, LocalStorage |
-| QR Generation | qrcode |
-| Cloud | Alibaba Cloud Function Compute, OSS, Tablestore |
+| Styling | CSS3, Apple Health-inspired clinical design system |
+| Computer Vision | HTML5 Canvas API, MediaPipe Tasks Vision |
+| Signal Processing | CHROM, POS, Inverted Green PPG, Goertzel Transform, Bandpass Filter |
+| Uncertainty Engine | Heuristic Error Estimation, Hardware Capabilities API |
+| AI Models | Qwen or Groq behind a Supabase Edge Function; local rules offline |
+| Database & Auth | Supabase Auth, PostgreSQL, Row-Level Security |
+| Payments | Stripe Checkout + signed Edge Function webhooks |
+| Reports | QR Code (`qrcode`), `@media print` CSS |
 
 ---
 
-#  High-Level Architecture
-
-```
-                           VYTAL PLATFORM
-
-             ┌──────────────────────────────────────────────┐
-             │              User Camera Input               │
-             └──────────────────────────────────────────────┘
-                               │
-                 ┌────────────┴────────────┐
-                 │                         │
-          Face Scan                 Finger + Flash
-                 │                         │
-                 └────────────┬────────────┘
-                               │
-                      rPPG Signal Extraction
-                               │
-                  CHROM + Goertzel Processing
-                               │
-                    Estimated Vital Signs & SpO2
-                               │
-                 ┌────────────┴────────────┐
-                 │                         │
-          AI Interpretation         Offline Storage
-                 │                         │
-                 └────────────┬────────────┘
-                               │
-                   Dashboard & Referral Report
-```
-
----
-
-#  Getting Started
-
-## Prerequisites
-
-- Node.js 18+
-- npm
-- Modern Browser
-- Camera Permission
-
----
+# 🚀 Getting Started
 
 ## Installation
-
-Clone the repository:
 
 ```bash
 git clone https://github.com/Ahmad-Ali-Shah/Vital.git
 cd Vital
-```
-
-Install dependencies:
-
-```bash
 npm install --ignore-scripts
-```
-
-Run development server:
-
-```bash
+npm run security:check
 npm run dev
 ```
 
-Open:
+Open: `http://localhost:5173`
 
-```
-http://localhost:5173
-```
-
----
+For production database, patient/referral workflow, AI proxy, and payment setup, follow [SECURITY.md](./SECURITY.md). Only
+`VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` belong in the browser environment.
+The full backend task map and test procedure are in
+[docs/BACKEND_IMPLEMENTATION.md](./docs/BACKEND_IMPLEMENTATION.md).
+Backend data-structure, query, time, and space optimizations are in
+[docs/PERFORMANCE_OPTIMIZATION.md](./docs/PERFORMANCE_OPTIMIZATION.md).
+This includes performance budgets, a bounded load-test harness, request tracing, centralized errors,
+query-plan assertions and concurrency tests.
+The complete university-concept mapping is in
+[docs/COMPUTER_SCIENCE_ARCHITECTURE.md](./docs/COMPUTER_SCIENCE_ARCHITECTURE.md).
+The reconciled clinical/security status and known limitations are in
+[VYTAL_BABY_BOSS_STATUS.md](./VYTAL_BABY_BOSS_STATUS.md).
 
 ## Production Build
 
 ```bash
 npm run build
-```
-
-Preview production build:
-
-```bash
 npm run preview
 ```
 
 ---
 
-#  Project Structure
+# 👥 Team
 
-```
-vytal-app/
-│
-├── idea/
-│   ├── Vytal_Research_Dossier/
-│   │   ├── mds/ (01-spo2, 02-afib, 03-alert-scale ... 29-wearable)
-│   │   └── Vytal_Research_Dossier.pdf
-│   ├── Vytal_3Day_Roadmap.md
-│   ├── Vytal_Explained.md
-│   ├── Vytal_Research_Foundations.md
-│   ├── Vytal_Seven_Day_Build_Plan.pdf
-│   └── Vytal_Tech_Stack.md
-│
-├── public/
-│   └── favicon.svg
-│
-├── src/
-│   │
-│   ├── components/
-│   │   ├── AiConfigModal.jsx
-│   │   ├── NavBar.jsx
-│   │   ├── PulseMark.jsx
-│   │   └── SplashAnimation.jsx
-│   │
-│   ├── lib/
-│   │   ├── afib.js
-│   │   ├── ai.js
-│   │   ├── alertScale.js
-│   │   ├── anemia.js
-│   │   ├── bleOximeter.js
-│   │   ├── bloodPressurePTT.js
-│   │   ├── bmiEstimate.js
-│   │   ├── jaundice.js
-│   │   ├── longitudinalRisk.js
-│   │   ├── platform.js
-│   │   ├── populationAnomaly.js
-│   │   ├── rppg.js
-│   │   ├── spo2.js
-│   │   ├── storage.js
-│   │   ├── thermalCamera.js
-│   │   ├── uncertainty.js
-│   │   └── wearableIntegration.js
-│   │
-│   ├── pages/
-│   │   ├── ScanPage.jsx
-│   │   ├── DashboardPage.jsx
-│   │   └── ReportPage.jsx
-│   │
-│   ├── App.jsx
-│   ├── index.css
-│   └── main.jsx
-│
-├── index.html
-├── package.json
-├── package-lock.json
-├── vite.config.js
-└── README.md
-```
+- **Ahmad Ali Shah**: AI, Signal Processing & Backend Architect
+- **Muhammad Ahmad**: Frontend Engineer & UI/UX Integration
+- **Laiba**: Cloud Architecture & Database Systems
 
 ---
 
-#  Documentation
+# ⚠️ Disclaimer
 
-The repository also contains detailed project documentation inside the **idea/** directory.
-
-| File | Description |
-|------|-------------|
-| Vytal_Explained.md | Overall project vision and concept |
-| Vytal_Research_Foundations.md | Scientific research and medical references behind rPPG |
-| Vytal_3Day_Roadmap.md | Initial implementation roadmap |
-| Vytal_Seven_Day_Build_Plan.pdf | Complete development schedule |
-| Vytal_Tech_Stack.md | Technical architecture and technology decisions |
-| Vytal_Research_Dossier/ | 21 research dossiers for clinical features |
-
-These documents describe the planning, research, architecture, and implementation process followed during development.
-
----
-
-#  Team
-
-### Ahmad Ali Shah
-**AI, Signal Processing & Backend Architect**
-
-- rPPG Pipeline
-- AI Integration
-- Offline Architecture
-- Clinical Logic
-- Backend Design
-
----
-
-### Muhammad Ahmad
-**Frontend Engineer & Signal Integration**
-
-- React Development
-- UI Components
-- Camera Experience
-- Dashboard
-- Visualization
-
----
-
-### Laiba
-**Cloud Architecture & Database Systems**
-
-- Alibaba Cloud Services
-- Database Design
-- Storage Architecture
-- Cloud Synchronization
-
----
-
-#  Current Prototype Status
-
-Implemented:
-
-- ✅ Face rPPG Scanning
-- ✅ Finger + Flash Scanning
-- ✅ Live PPG Waveform
-- ✅ SpO2 Proxy Estimation ($RoR$)
-- ✅ AFib Irregular Rhythm Flagging
-- ✅ 3-Level Triage Alert Scale (GREEN/YELLOW/ORANGE/RED)
-- ✅ Anemia (Conjunctival Pallor) Screening
-- ✅ Jaundice (Scleral Icterus) Screening
-- ✅ Pediatric & Pregnancy Modes
-- ✅ PTT Blood Pressure Estimation
-- ✅ Malnutrition & BMI Screening
-- ✅ HL7 FHIR R4 JSON Export
-- ✅ Web Speech API Voice Readout
-- ✅ Longitudinal Risk Trend Sparklines
-- ✅ Shewhart SPC Population Outbreak Detection
-- ✅ Web Bluetooth BLE & Web USB Thermal Integration
-- ✅ AI Health Explanations & Dual Clinician View
-- ✅ Multilingual Interface (8 Languages)
-- ✅ Offline Queue & Storage
-- ✅ Dashboard with Filters & Sparklines
-- ✅ Printable Referral Reports with QR Codes
-
----
-
-#  Disclaimer
-
-Vytal is an AI-assisted healthcare screening prototype developed for the **Bano Qabil × Alibaba Cloud AI Hackathon 2026**.
-
-The application is **not** a certified medical device and should **not** be used as a replacement for professional medical diagnosis or emergency care.
-
-All measurements are intended for **screening, triage, and decision support only**. Final clinical decisions must always be made by qualified healthcare professionals.
-
----
-
-# ❤️ Built For
-
-Making accessible healthcare possible through AI, computer vision, and offline-first technology.
+Vytal is a clinical decision-support and screening prototype. It is **not** a certified medical device. Final clinical evaluations must always be performed by qualified healthcare professionals.

@@ -27,7 +27,7 @@ export const PROGRAMME_CONTEXTS = [
 
 /**
  * Evaluate vitals against age-banded and pregnancy-aware clinical guidelines.
- * 
+ *
  * @param {object} params
  *   { hr, br, stress, ageGroup, isPregnant, programmeContext }
  * @returns {{ tier: 'RED'|'ORANGE'|'YELLOW'|'GREEN', title: string, recommendation: string, reasons: string[], respiratoryDistress: boolean }}

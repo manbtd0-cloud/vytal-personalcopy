@@ -64,7 +64,7 @@ function erythemaIndex(r, g, b) {
 
 /**
  * Analyze lower palpebral conjunctiva image ROI for pallor and estimate hemoglobin (Hb).
- * 
+ *
  * @param {CanvasRenderingContext2D} ctx - Canvas 2D context containing captured conjunctiva ROI
  * @param {object} roi - { x, y, w, h }
  * @returns {{ hb: number, tier: 'RED'|'ORANGE'|'GREEN', label: string, recommendation: string, erythemaIndex: number }}
@@ -72,10 +72,10 @@ function erythemaIndex(r, g, b) {
 export function analyzeConjunctivalPallor(ctx, roi) {
   if (!ctx || !roi || roi.w <= 0 || roi.h <= 0) {
     return {
-      hb: 12.5,
-      tier: 'GREEN',
-      label: 'Normal Hemoglobin Proxy',
-      recommendation: 'Conjunctival color appears well-perfused.',
+      hb: null,
+      tier: 'UNKNOWN',
+      label: 'Low Confidence — Retry Scan',
+      recommendation: 'No valid conjunctival capture was available. Reposition the lower eyelid in even lighting and retry.',
       erythemaIndex: null,
     }
   }
