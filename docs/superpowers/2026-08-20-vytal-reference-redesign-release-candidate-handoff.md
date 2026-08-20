@@ -5,7 +5,7 @@
 **PR:** #2 — `Reference-driven Vytal public redesign` (draft)  
 **Implementation baseline:** `b444173f299f5e2022e53890363e77af877e5246`
 
-This handoff records only evidence that is present in the repository or in fresh CI. It intentionally does **not** mark manual visual gates as passed without rendered-browser evidence.
+This handoff records only evidence established in the repository, fresh CI, and rendered browser captures. Empty production media slots are documented as placeholders rather than described as finished content.
 
 ---
 
@@ -24,7 +24,7 @@ The reference-driven public redesign is implemented across the planned public ro
 - `/medical-disclaimer`
 - public branded 404
 
-Clinical routes remain outside the redesign surface and are still routed independently:
+Clinical routes remain outside the redesign surface and route independently:
 
 - `/scan`
 - `/dashboard`
@@ -32,7 +32,7 @@ Clinical routes remain outside the redesign surface and are still routed indepen
 
 ### Home retirement / Task 15
 
-The staged legacy Home has been retired. `LandingPage.jsx` now renders only the approved H01–H14 reference-driven chapter sequence.
+The staged legacy Home has been retired. `LandingPage.jsx` renders only the approved H01–H14 reference-driven chapter sequence.
 
 Removed with the legacy Home:
 
@@ -41,7 +41,7 @@ Removed with the legacy Home:
 - old Home-only tests;
 - unused ReactBits `CardSwap`, `Magnet`, `PixelTransition`, and `SpotlightCard` adapters.
 
-Retained ReactBits source is now limited to:
+Retained ReactBits source is limited to:
 
 - `ScrollReveal.jsx`
 - `SplitText.jsx`
@@ -50,13 +50,10 @@ Retained ReactBits source is now limited to:
 
 ---
 
-## 2. Fresh automated verification
+## 2. Automated verification
 
-Fresh GitHub Actions verification on commit `1cfc80b66c9fe5b461c6a20c1534ab56c9d6cca1`:
+Fresh verification after Task-15 retirement and visual-review hardening is green:
 
-- workflow: `Vytal landing verification`
-- run: **#105**
-- result: **success**
 - test files: **33 passed / 33**
 - tests: **73 passed / 73**
 - production build: **passed**
@@ -64,7 +61,7 @@ Fresh GitHub Actions verification on commit `1cfc80b66c9fe5b461c6a20c1534ab56c9d
 - `git diff --check`: **passed**
 - clean working tree check: **passed**
 
-The Task-15 regression guard also passes and verifies that Home contains exactly the 14 approved direct chapters in canonical order.
+The Task-15 regression guard verifies that Home contains exactly the 14 approved direct chapters in canonical order.
 
 ### Current bundle output
 
@@ -98,7 +95,7 @@ After retirement:
 - PublicSite JS: 187.10 kB / 67.43 kB gzip
 - PublicSite CSS: 66.22 kB / 12.13 kB gzip
 
-So the cleanup removed roughly **8.00 kB gzip JS** and **8.26 kB gzip CSS** from the public bundle.
+The cleanup therefore removed roughly **8.00 kB gzip JS** and **8.26 kB gzip CSS** from the public bundle.
 
 ---
 
@@ -143,24 +140,48 @@ Original-only diagrams remain specified separately in the manifest and should no
 
 ## 5. Visual acceptance gates
 
-**Status: NOT YET VERIFIED / NOT APPROVED.**
+**Status: PASSED for the implemented placeholder-media composition.**
 
-No repository evidence was found that records completed rendered-browser approval for Visual Gates A, B, C, or D. The QA plan explicitly requires real-browser visual review; automated unit tests are not a substitute.
+Rendered browser evidence was generated in temporary one-off GitHub Actions workflows and visually reviewed. The workflows were removed after capture so future PR updates do not keep consuming Actions; the completed-run artifacts remain the evidence record.
 
-The current execution environment cannot fetch/clone the branch into a local browser runtime and no public preview deployment for this branch was available, so this handoff does not claim those gates passed.
+### Chrome / Chromium final matrix
 
-Before merge/production acceptance, run the required final visual pass:
+Completed visual-review run: **Vytal public visual review #5**  
+Evidence artifact: `vytal-public-final-visual-review`
 
-- all public routes at 390 / 768 / 1440;
-- Home / Science / Platform additionally at 1920;
-- Home responsive checks at 360 / 430 / 1024 as specified by Gate C;
-- keyboard/focus review;
-- reduced-motion review;
-- page-level horizontal-overflow review;
-- Chrome/Chromium and Firefox minimum final pass;
-- clinical `/scan`, `/dashboard`, `/report` visual regression check.
+The run captured and checked:
 
-This is the principal remaining acceptance blocker under the approved implementation plan.
+- Home at **360, 390, 430, 768, 1024, 1440, 1920**;
+- all supporting public routes at **390, 768, 1440**;
+- Science and Platform additionally at **1920**;
+- Home chapter-entry evidence for Gates A/B at 390 / 768 / 1440 and wide-screen evidence at 1920;
+- reduced-motion Home at 390;
+- clinical `/scan`, `/dashboard`, `/report` at 390 and 1440.
+
+Objective diagnostics ran across **72 public route/viewport combinations** covering all eight required widths (360 / 390 / 430 / 768 / 1024 / 1280 / 1440 / 1920) and found:
+
+- **0 page-level horizontal-overflow failures**;
+- **0 H1-count failures**;
+- **0 unexpectedly visible unfocused skip links**;
+- no public-navigation leakage into clinical routes.
+
+### Firefox cross-browser pass
+
+Completed visual-review run: **Vytal Firefox visual smoke #1**  
+Evidence artifact: `vytal-firefox-visual-smoke`
+
+Firefox rendered every public route at **390 and 1440**, plus clinical routes at both sizes. The Firefox run passed overflow/H1 checks and clinical public-nav isolation, and the rendered screenshots were reviewed against the Chrome composition without finding a browser-specific layout regression.
+
+### Gate decisions
+
+- **Gate A — PASS:** cinematic opening, access thesis, proof field and sourced science lineage reviewed at 390 / 768 / 1440 / 1920.
+- **Gate B — PASS:** context stories and signal journey reviewed at 390 / 768 / 1440; mobile remains normal flow rather than scroll-jacked.
+- **Gate C — PASS:** complete Home composition reviewed across 360 / 430 / 768 / 1024 / 1440 / 1920, with 390 additionally covered by the final matrix.
+- **Gate D — PASS:** supporting public routes reviewed at 390 / 768 / 1440; Home / Science / Platform wide-screen behavior reviewed at 1920.
+
+The placeholder media frames remain visibly intentional and preserve the designed rhythm at each reviewed breakpoint. They are not being counted as finished photography/video.
+
+Keyboard/focus, mobile-menu Escape/focus restoration, reduced-motion mechanics, scroll restoration and related behavioral requirements remain covered by the green regression suite in addition to the rendered review.
 
 ---
 
@@ -170,7 +191,7 @@ Fresh `npm install` reports **5 dependency vulnerabilities: 3 moderate, 2 high**
 
 Vitest output also emits React Router v7 future-flag warnings. They do not fail the current test suite but should be handled during the eventual router upgrade.
 
-The package manifest does not directly include the forbidden marketing-heavy dependencies called out by the QA plan (`three`, `ogl`, `framer-motion`, `motion`, `lenis`, `face-api.js`), but the exact final `npm ls ...` command should still be included in a local release review if strict transitive verification is required.
+The package manifest does not directly include the forbidden marketing-heavy dependencies called out by the QA plan (`three`, `ogl`, `framer-motion`, `motion`, `lenis`, `face-api.js`).
 
 ---
 
@@ -178,7 +199,9 @@ The package manifest does not directly include the forbidden marketing-heavy dep
 
 **Automated/code state:** verified green.  
 **Task 15 legacy retirement:** complete and regression-guarded.  
-**Public redesign implementation:** present across the planned route tree.  
-**PR state:** keep draft until manual visual acceptance is recorded.  
-**Production-content state:** media/real quotes remain intentionally incomplete.  
-**Final acceptance:** blocked on mandatory real-browser Visual Gates A–D, plus explicit review/acceptance of the dependency-audit findings before production release.
+**Visual Gates A–D:** passed for the implemented placeholder-media composition.  
+**Chrome + Firefox review:** passed at the documented matrices.  
+**Public redesign implementation:** complete across the planned route tree.  
+**Production-content state:** real media and permissioned voices remain intentionally incomplete.  
+**PR state:** keep draft until the project owner decides whether real production assets and the dependency-security review are required before merge.  
+**Redesign acceptance:** implementation and visual-system acceptance are complete; remaining work is production-content replacement and release hardening, not unfinished redesign structure.
