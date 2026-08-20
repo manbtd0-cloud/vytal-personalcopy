@@ -52,24 +52,24 @@ Retained ReactBits source is limited to:
 
 ## 2. Automated verification
 
-Fresh verification after Task-15 retirement and visual-review hardening is green:
+Fresh verification after Task-15 retirement, skip-link hardening, and visual-review completion is green:
 
-- test files: **33 passed / 33**
-- tests: **73 passed / 73**
+- test files: **34 passed / 34**
+- tests: **74 passed / 74**
 - production build: **passed**
 - transformed modules: **222**
 - `git diff --check`: **passed**
 - clean working tree check: **passed**
 
-The Task-15 regression guard verifies that Home contains exactly the 14 approved direct chapters in canonical order.
+The Task-15 regression guard verifies that Home contains exactly the 14 approved direct chapters in canonical order. A dedicated skip-link style regression also verifies that the public skip link remains off-canvas until keyboard focus.
 
 ### Current bundle output
 
 | Output | Raw | Gzip |
 |---|---:|---:|
-| PublicSite JS | 187.10 kB | **67.43 kB** |
-| PublicSite CSS | 66.22 kB | **12.13 kB** |
-| Shared/entry JS (`index`) | 412.38 kB | **136.49 kB** |
+| PublicSite JS | 187.10 kB | **67.44 kB** |
+| PublicSite CSS | 66.81 kB | **12.24 kB** |
+| Shared/entry JS (`index`) | 412.38 kB | **136.48 kB** |
 | Shared/entry CSS (`index`) | 22.47 kB | **5.19 kB** |
 
 Lazy public route JS gzip sizes:
@@ -77,11 +77,11 @@ Lazy public route JS gzip sizes:
 - Privacy: 1.32 kB
 - Medical Disclaimer: 1.34 kB
 - Impact: 1.78 kB
-- About: 2.17 kB
+- About: 2.16 kB
 - Screenings: 2.08 kB
-- Platform: 2.42 kB
-- Journey: 2.64 kB
-- Science: 2.95 kB
+- Platform: 2.41 kB
+- Journey: 2.63 kB
+- Science: 2.94 kB
 
 ### Task-15 bundle improvement
 
@@ -90,12 +90,12 @@ Immediately before legacy Home retirement, the verified build reported:
 - PublicSite JS: 218.66 kB / 75.43 kB gzip
 - PublicSite CSS: 112.51 kB / 20.39 kB gzip
 
-After retirement:
+Current post-retirement build:
 
-- PublicSite JS: 187.10 kB / 67.43 kB gzip
-- PublicSite CSS: 66.22 kB / 12.13 kB gzip
+- PublicSite JS: 187.10 kB / 67.44 kB gzip
+- PublicSite CSS: 66.81 kB / 12.24 kB gzip
 
-The cleanup therefore removed roughly **8.00 kB gzip JS** and **8.26 kB gzip CSS** from the public bundle.
+The cleanup therefore removed roughly **7.99 kB gzip JS** and **8.15 kB gzip CSS** from the public bundle while leaving the shared/clinical entry effectively unchanged.
 
 ---
 
