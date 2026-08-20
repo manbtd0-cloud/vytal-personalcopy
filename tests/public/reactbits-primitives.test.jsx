@@ -3,7 +3,7 @@ import ScrollReveal from '../../src/public/components/reactbits/ScrollReveal.jsx
 import SplitText from '../../src/public/components/reactbits/SplitText.jsx'
 
 test('retained ReactBits text primitives preserve readable content', () => {
-  render(
+  const { container } = render(
     <>
       <SplitText text="Hidden signal" tag="h2" animateOnMount={false} />
       <ScrollReveal tag="p">Signal context</ScrollReveal>
@@ -11,5 +11,5 @@ test('retained ReactBits text primitives preserve readable content', () => {
   )
 
   expect(screen.getByRole('heading', { name: 'Hidden signal' })).toBeInTheDocument()
-  expect(screen.getByText('Signal context')).toBeInTheDocument()
+  expect(container.querySelector('.rb-scroll-reveal')).toHaveTextContent('Signal context')
 })
