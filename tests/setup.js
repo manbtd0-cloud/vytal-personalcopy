@@ -3,8 +3,6 @@ import { afterAll, afterEach } from 'vitest'
 import { gsap } from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 
-gsap.registerPlugin(ScrollTrigger)
-
 if (!window.matchMedia) {
   window.matchMedia = (query) => ({
     matches: false,
@@ -46,6 +44,8 @@ if (!globalThis.cancelAnimationFrame) {
     clearTimeout(id)
   }
 }
+
+gsap.registerPlugin(ScrollTrigger)
 
 afterEach(() => {
   for (const id of pendingAnimationFrames) {
