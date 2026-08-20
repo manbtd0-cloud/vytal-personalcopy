@@ -1,0 +1,120 @@
+name: Vytal public visual review
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/public/**'
+      - '.github/workflows/public-visual-review.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  capture:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout implementation branch
+        uses: actions/checkout@v4
+        with:
+          ref: landing-page-reference-redesign
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install app and visual-review driver
+        run: |
+          npm ci
+          npm install --no-save --ignore-scripts puppeteer-core@24.16.0
+
+      - name: Build
+        run: npm run build
+
+      - name: Start preview
+        run: |
+          npx vite preview --host 127.0.0.1 --port 4173 > /tmp/vite-preview.log 2>&1 &
+          echo $! > /tmp/vite-preview.pid
+          for i in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:4173/ >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/vite-preview.log
+          exit 1
+
+      - name: Capture public visual gates
+        run: |
+          mkdir -p visual-review/desktop/home visual-review/mobile/home visual-review/desktop/routes visual-review/mobile/routes
+          node --input-type=module <<'NODE'
+          import puppeteer from 'puppeteer-core'
+
+          const browser = await puppeteer.launch({
+            headless: true,
+            executablePath: '/usr/bin/google-chrome',
+            args: ['--no-sandbox', '--disable-dev-shm-usage'],
+          })
+
+          const base = 'http://127.0.0.1:4173'
+          const chapterNames = [
+            'hero', 'access-thesis', 'proof', 'science-lineage', 'context-stories',
+            'signal-journey', 'signal-band', 'documentary-run', 'trust-reset',
+            'evidence', 'language-band', 'platform-arc', 'concrete-value', 'final-entry',
+          ]
+          const routes = [
+            ['screenings', '/screenings'],
+            ['science', '/science'],
+            ['impact', '/impact'],
+            ['about', '/about'],
+            ['journey', '/journey'],
+            ['platform', '/platform'],
+            ['privacy', '/privacy'],
+            ['medical-disclaimer', '/medical-disclaimer'],
+          ]
+
+          async function waitForFonts(page) {
+            await page.evaluate(() => document.fonts?.ready)
+            await new Promise((resolve) => setTimeout(resolve, 250))
+          }
+
+          async function captureHome(viewport, dir) {
+            const page = await browser.newPage()
+            await page.setViewport(viewport)
+            await page.goto(`${base}/`, { waitUntil: 'networkidle0' })
+            await waitForFonts(page)
+            for (const name of chapterNames) {
+              const node = await page.$(`[data-home-chapter="${name}"]`)
+              if (!node) throw new Error(`Missing Home chapter ${name}`)
+              await node.screenshot({ path: `visual-review/${dir}/home/${name}.png` })
+            }
+            await page.close()
+          }
+
+          async function captureRoutes(viewport, dir) {
+            const page = await browser.newPage()
+            await page.setViewport(viewport)
+            for (const [name, route] of routes) {
+              await page.goto(`${base}${route}`, { waitUntil: 'networkidle0' })
+              await waitForFonts(page)
+              await page.screenshot({ path: `visual-review/${dir}/routes/${name}.png`, fullPage: true })
+            }
+            await page.close()
+          }
+
+          await captureHome({ width: 1440, height: 900, deviceScaleFactor: 1 }, 'desktop')
+          await captureHome({ width: 390, height: 844, deviceScaleFactor: 1 }, 'mobile')
+          await captureRoutes({ width: 1440, height: 900, deviceScaleFactor: 1 }, 'desktop')
+          await captureRoutes({ width: 390, height: 844, deviceScaleFactor: 1 }, 'mobile')
+
+          await browser.close()
+          NODE
+
+      - name: Upload visual-review screenshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: vytal-public-visual-review
+          path: visual-review
+          if-no-files-found: error
