@@ -1,31 +1,15 @@
 import { render, screen } from '@testing-library/react'
-import SpotlightCard from '../../src/public/components/reactbits/SpotlightCard.jsx'
-import PixelTransition from '../../src/public/components/reactbits/PixelTransition.jsx'
+import ScrollReveal from '../../src/public/components/reactbits/ScrollReveal.jsx'
+import SplitText from '../../src/public/components/reactbits/SplitText.jsx'
 
-
-test('spotlight card never hides its content', () => {
-  render(<SpotlightCard>Signal quality</SpotlightCard>)
-  expect(screen.getByText('Signal quality')).toBeVisible()
-})
-
-test('controlled pixel transition exposes raw content when inactive', () => {
+test('retained ReactBits text primitives preserve readable content', () => {
   render(
-    <PixelTransition
-      firstContent={<div>RAW_READING</div>}
-      secondContent={<div>EXPLAINED_READING</div>}
-      active={false}
-    />,
+    <>
+      <SplitText text="Hidden signal" tag="h2" animateOnMount={false} />
+      <ScrollReveal tag="p">Signal context</ScrollReveal>
+    </>,
   )
-  expect(screen.getByText('RAW_READING')).toBeInTheDocument()
-})
 
-test('controlled pixel transition exposes explained content when active', () => {
-  render(
-    <PixelTransition
-      firstContent={<div>RAW_READING</div>}
-      secondContent={<div>EXPLAINED_READING</div>}
-      active
-    />,
-  )
-  expect(screen.getByText('EXPLAINED_READING')).toBeInTheDocument()
+  expect(screen.getByRole('heading', { name: 'Hidden signal' })).toBeInTheDocument()
+  expect(screen.getByText('Signal context')).toBeInTheDocument()
 })

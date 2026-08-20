@@ -12,17 +12,6 @@ import LanguageBandChapter from '../components/home-reference/LanguageBandChapte
 import PlatformArcChapter from '../components/home-reference/PlatformArcChapter.jsx'
 import ConcreteValueChapter from '../components/home-reference/ConcreteValueChapter.jsx'
 import FinalEntryChapter from '../components/home-reference/FinalEntryChapter.jsx'
-import CameraScienceSection from '../components/home/CameraScienceSection.jsx'
-import ProcessSection from '../components/home/ProcessSection.jsx'
-import ProductProofSection from '../components/home/ProductProofSection.jsx'
-import ScreeningEcosystemSection from '../components/home/ScreeningEcosystemSection.jsx'
-import TrustSection from '../components/home/TrustSection.jsx'
-import AiExplanationSection from '../components/home/AiExplanationSection.jsx'
-import LongitudinalSection from '../components/home/LongitudinalSection.jsx'
-import ImpactSection from '../components/home/ImpactSection.jsx'
-import SciencePreviewSection from '../components/home/SciencePreviewSection.jsx'
-import FutureVisionSection from '../components/home/FutureVisionSection.jsx'
-import FinalCtaSection from '../components/home/FinalCtaSection.jsx'
 
 export default function LandingPage() {
   return (
@@ -41,17 +30,6 @@ export default function LandingPage() {
       <PlatformArcChapter />
       <ConcreteValueChapter />
       <FinalEntryChapter />
-      <CameraScienceSection />
-      <ProcessSection />
-      <ProductProofSection />
-      <ScreeningEcosystemSection />
-      <TrustSection />
-      <AiExplanationSection />
-      <LongitudinalSection />
-      <ImpactSection />
-      <SciencePreviewSection />
-      <FutureVisionSection />
-      <FinalCtaSection />
     </div>
   )
 }

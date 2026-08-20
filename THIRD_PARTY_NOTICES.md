@@ -16,16 +16,12 @@ component library.
 
 Current adapted ReactBits sources retained in `src/public/components/reactbits/`:
 
-- `CardSwap.jsx` — staged legacy Home product-proof interaction.
-- `Magnet.jsx` — staged legacy Home final CTA interaction.
-- `PixelTransition.jsx` — staged legacy Home AI explanation interaction.
 - `ScrollReveal.jsx` — reference Home access-thesis reveal.
 - `SplitText.jsx` — reference Home hero text reveal.
-- `SpotlightCard.jsx` — staged legacy Home screening-tile interaction.
 
-The staged legacy Home remains intentionally mounted during the current visual
-migration, so those legacy-listed files are still active dependencies rather
-than unused copies.
+The completed reference-driven public experience retains only these two text
+animation primitives. Legacy Home interaction adapters were removed when the
+old staged Home was retired.
 
 Original license:
 https://github.com/DavidHDev/react-bits/blob/main/LICENSE.md

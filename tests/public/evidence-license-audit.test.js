@@ -52,12 +52,8 @@ test('third-party notice inventories every retained ReactBits source component',
     .sort()
 
   expect(retainedComponents).toEqual([
-    'CardSwap.jsx',
-    'Magnet.jsx',
-    'PixelTransition.jsx',
     'ScrollReveal.jsx',
     'SplitText.jsx',
-    'SpotlightCard.jsx',
   ])
 
   for (const component of retainedComponents) {
