@@ -1,3 +1,33 @@
 .public-site {
   overflow-x: clip;
 }
+
+.public-skip-link {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  z-index: 10000;
+  transform: translateY(calc(-100% - 24px));
+  opacity: 0;
+  pointer-events: none;
+  padding: 10px 16px;
+  border: 1px solid rgba(19, 17, 16, 0.18);
+  border-radius: 999px;
+  background: var(--public-ivory);
+  color: var(--public-ink);
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-decoration: none;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  transition: transform 160ms ease, opacity 160ms ease;
+}
+
+.public-skip-link:focus,
+.public-skip-link:focus-visible {
+  transform: translateY(0);
+  opacity: 1;
+  pointer-events: auto;
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
