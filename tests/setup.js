@@ -1,5 +1,9 @@
 import '@testing-library/jest-dom'
-import { afterEach } from 'vitest'
+import { afterAll, afterEach } from 'vitest'
+import { gsap } from 'gsap'
+import { ScrollTrigger } from 'gsap/ScrollTrigger'
+
+gsap.registerPlugin(ScrollTrigger)
 
 if (!window.matchMedia) {
   window.matchMedia = (query) => ({
@@ -44,6 +48,14 @@ if (!globalThis.cancelAnimationFrame) {
 }
 
 afterEach(() => {
+  for (const id of pendingAnimationFrames) {
+    clearTimeout(id)
+  }
+  pendingAnimationFrames.clear()
+})
+
+afterAll(() => {
+  ScrollTrigger.disable(true, true)
   for (const id of pendingAnimationFrames) {
     clearTimeout(id)
   }
