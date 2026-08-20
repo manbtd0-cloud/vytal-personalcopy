@@ -1,0 +1,77 @@
+.visually-hidden-list {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0 0 0 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+.loop-band {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+}
+
+.loop-band__viewport {
+  width: 100%;
+  overflow: hidden;
+}
+
+.loop-band__track {
+  display: flex;
+  width: max-content;
+  will-change: transform;
+}
+
+.loop-band__segment {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  width: max-content;
+}
+
+.loop-band__item {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+}
+
+.loop-band.is-static .loop-band__viewport {
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.loop-band.is-static .loop-band__viewport::-webkit-scrollbar {
+  display: none;
+}
+
+.loop-band.is-static .loop-band__track,
+.loop-band.is-static .loop-band__segment {
+  width: auto;
+  min-width: 100%;
+  flex-wrap: wrap;
+  transform: none !important;
+  will-change: auto;
+}
+
+.number-reveal {
+  display: inline-block;
+  font-variant-numeric: tabular-nums;
+}
+
+.number-reveal__visual {
+  display: inline-block;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loop-band__track,
+  .number-reveal__visual {
+    transform: none !important;
+    animation: none !important;
+    transition: none !important;
+  }
+}

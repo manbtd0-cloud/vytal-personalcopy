@@ -1,0 +1,99 @@
+.media-frame {
+  position: relative;
+  width: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: var(--public-surface, #181512);
+  color: var(--text-dim, #918a85);
+}
+
+.media-frame--viewport {
+  min-height: 100svh;
+  aspect-ratio: auto;
+}
+
+.media-frame__surface {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.025), transparent 52%),
+    var(--public-surface, #181512);
+}
+
+.media-frame__surface > img,
+.media-frame__surface > video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: var(--media-position, 50% 50%);
+}
+
+.media-frame__placeholder {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: end start;
+  padding: clamp(12px, 1.6vw, 22px);
+  background:
+    linear-gradient(120deg, rgba(255, 77, 94, 0.035), transparent 38%),
+    linear-gradient(300deg, rgba(111, 191, 151, 0.025), transparent 42%),
+    #171513;
+}
+
+.media-frame__placeholder::before,
+.media-frame__placeholder::after {
+  content: '';
+  position: absolute;
+  pointer-events: none;
+}
+
+.media-frame__placeholder::before {
+  inset: 14px;
+  border: 1px solid rgba(241, 237, 231, 0.055);
+}
+
+.media-frame__placeholder::after {
+  top: 50%;
+  left: 10%;
+  width: 80%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 77, 94, 0.16), transparent);
+}
+
+.media-frame__placeholder > span {
+  position: relative;
+  z-index: 1;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.62rem;
+  letter-spacing: 0.12em;
+  color: rgba(241, 237, 231, 0.28);
+}
+
+.media-frame__caption {
+  position: absolute;
+  z-index: 2;
+  right: 12px;
+  bottom: 10px;
+  left: 12px;
+  margin: 0;
+  font-size: 0.72rem;
+  color: rgba(241, 237, 231, 0.72);
+}
+
+.media-frame[data-media-status='placeholder'] {
+  isolation: isolate;
+}
+
+.media-frame[data-media-parallax='enabled'] .media-frame__surface {
+  transform: scale(1.035);
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .media-frame__surface {
+    transform: none !important;
+    will-change: auto !important;
+  }
+}

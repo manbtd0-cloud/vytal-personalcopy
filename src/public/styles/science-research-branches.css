@@ -1,0 +1,266 @@
+.science-research-branches,
+.science-claim-boundaries {
+  position: relative;
+  padding: clamp(120px, 15vw, 220px) 0 clamp(140px, 17vw, 250px);
+}
+
+.science-research-branches {
+  overflow: hidden;
+  background: var(--public-bg-deep);
+  color: var(--public-ivory);
+}
+
+.science-research-branches__network {
+  position: absolute;
+  z-index: 0;
+  top: 18%;
+  left: -8%;
+  width: 116%;
+  min-height: 180px;
+  opacity: 0.18;
+  pointer-events: none;
+}
+
+.science-research-branches__intro,
+.science-claim-boundaries__intro {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: clamp(16px, 2vw, 30px);
+}
+
+.science-research-branches__intro .ref-kicker,
+.science-claim-boundaries__intro .ref-kicker {
+  grid-column: 1 / 4;
+}
+
+.science-research-branches__intro .ref-kicker {
+  color: var(--accent);
+}
+
+.science-claim-boundaries__intro .ref-kicker {
+  color: rgba(25, 22, 19, 0.48);
+}
+
+.science-research-branches__intro h2,
+.science-claim-boundaries__intro h2 {
+  grid-column: 4 / -1;
+  margin: 0;
+  max-width: 9.5ch;
+  font-size: clamp(3.5rem, 7.8vw, 8.9rem);
+  font-weight: 600;
+  line-height: 0.88;
+  letter-spacing: -0.07em;
+}
+
+.science-research-branches__intro > p:last-child,
+.science-claim-boundaries__intro > p:last-child {
+  grid-column: 8 / -1;
+  margin: 38px 0 0;
+  line-height: 1.7;
+}
+
+.science-research-branches__intro > p:last-child {
+  color: rgba(241, 237, 231, 0.56);
+}
+
+.science-claim-boundaries__intro > p:last-child {
+  color: rgba(25, 22, 19, 0.58);
+}
+
+.science-research-branches__grid {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: clamp(90px, 13vw, 200px) clamp(16px, 2vw, 30px);
+  align-items: start;
+  margin-top: clamp(96px, 13vw, 194px);
+}
+
+.science-research-branch {
+  min-width: 0;
+}
+
+.science-research-branch--1 { grid-column: 1 / 8; }
+.science-research-branch--2 { grid-column: 9 / 13; margin-top: clamp(110px, 15vw, 230px); }
+.science-research-branch--3 { grid-column: 2 / 6; }
+.science-research-branch--4 { grid-column: 7 / 13; margin-top: clamp(70px, 10vw, 155px); }
+.science-research-branch--5 { grid-column: 1 / 7; margin-top: clamp(40px, 6vw, 90px); }
+.science-research-branch--6 { grid-column: 8 / 12; margin-top: clamp(140px, 19vw, 290px); }
+
+.science-research-branch__media.media-frame {
+  border-radius: 0;
+  background: #13110f;
+}
+
+.science-research-branch--2 .science-research-branch__media,
+.science-research-branch--6 .science-research-branch__media {
+  width: 84%;
+  margin-left: auto;
+}
+
+.science-research-branch__copy {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(241, 237, 231, 0.15);
+}
+
+.science-research-branch__meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  color: rgba(241, 237, 231, 0.46);
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.science-research-branch__meta span:last-child {
+  color: var(--accent);
+}
+
+.science-research-branch__copy h3 {
+  margin: 26px 0 0;
+  font-size: clamp(2.1rem, 4.2vw, 4.9rem);
+  font-weight: 600;
+  line-height: 0.94;
+  letter-spacing: -0.054em;
+}
+
+.science-research-branch__method,
+.science-research-branch__limitation {
+  margin: 24px 0 0;
+  line-height: 1.64;
+}
+
+.science-research-branch__method {
+  color: rgba(241, 237, 231, 0.58);
+}
+
+.science-research-branch__limitation {
+  padding-top: 16px;
+  border-top: 1px solid rgba(241, 237, 231, 0.1);
+  color: rgba(241, 237, 231, 0.42);
+  font-size: 0.88rem;
+}
+
+.science-claim-boundaries {
+  background: var(--public-ivory);
+  color: var(--public-ink);
+}
+
+.science-claim-boundaries__list {
+  margin-top: clamp(84px, 11vw, 160px);
+  padding: 0;
+  list-style: none;
+  border-top: 2px solid var(--public-ink);
+}
+
+.science-claim-boundaries__list li {
+  display: grid;
+  grid-template-columns: 56px minmax(180px, 0.65fr) minmax(0, 1fr);
+  gap: 18px clamp(24px, 4vw, 70px);
+  align-items: start;
+  padding: 28px 0 34px;
+  border-bottom: 1px solid rgba(25, 22, 19, 0.18);
+}
+
+.science-claim-boundaries__list > li > span {
+  color: rgba(25, 22, 19, 0.38);
+  font-family: var(--font-mono);
+  font-size: 0.64rem;
+}
+
+.science-claim-boundaries__list strong {
+  display: block;
+  font-size: clamp(1.15rem, 1.8vw, 1.6rem);
+  font-weight: 600;
+}
+
+.science-claim-boundaries__list small {
+  display: block;
+  margin-top: 10px;
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.science-claim-boundaries__list p {
+  margin: 0;
+  max-width: 58ch;
+  color: rgba(25, 22, 19, 0.62);
+  line-height: 1.68;
+}
+
+@media (max-width: 900px) {
+  .science-research-branch--1 { grid-column: 1 / 8; }
+  .science-research-branch--2 { grid-column: 8 / 13; }
+  .science-research-branch--3 { grid-column: 1 / 6; }
+  .science-research-branch--4 { grid-column: 6 / 13; }
+  .science-research-branch--5 { grid-column: 1 / 8; }
+  .science-research-branch--6 { grid-column: 8 / 13; }
+}
+
+@media (max-width: 720px) {
+  .science-research-branches,
+  .science-claim-boundaries {
+    padding: 104px 0 126px;
+  }
+
+  .science-research-branches__intro,
+  .science-claim-boundaries__intro,
+  .science-research-branches__grid {
+    display: block;
+  }
+
+  .science-research-branches__intro h2,
+  .science-claim-boundaries__intro h2 {
+    margin-top: 38px;
+    font-size: clamp(3.3rem, 13.8vw, 5.7rem);
+  }
+
+  .science-research-branches__intro > p:last-child,
+  .science-claim-boundaries__intro > p:last-child {
+    width: 84%;
+    margin: 36px 0 0 auto;
+  }
+
+  .science-research-branches__grid {
+    margin-top: 82px;
+  }
+
+  .science-research-branch,
+  .science-research-branch--2,
+  .science-research-branch--3,
+  .science-research-branch--4,
+  .science-research-branch--5,
+  .science-research-branch--6 {
+    width: 100%;
+    margin: 0 0 104px;
+  }
+
+  .science-research-branch--2,
+  .science-research-branch--6 {
+    width: 76%;
+    margin-left: auto;
+  }
+
+  .science-research-branch--2 .science-research-branch__media,
+  .science-research-branch--6 .science-research-branch__media {
+    width: 100%;
+  }
+
+  .science-claim-boundaries__list li {
+    grid-template-columns: 38px 1fr;
+  }
+
+  .science-claim-boundaries__list p {
+    grid-column: 2;
+    margin-top: 12px;
+  }
+}

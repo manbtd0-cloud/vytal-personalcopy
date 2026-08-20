@@ -1,0 +1,12 @@
+.rb-split-text {
+  display: inline;
+}
+
+.rb-split-text__piece,
+.rb-scroll-reveal__word {
+  display: inline-block;
+}
+
+.rb-scroll-reveal {
+  margin: 0;
+}
