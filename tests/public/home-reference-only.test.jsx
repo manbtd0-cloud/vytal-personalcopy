@@ -2,6 +2,7 @@ import { render } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import LandingPage from '../../src/public/pages/LandingPage.jsx'
 
+// Task 15 regression guard: the staged legacy Home must never be appended again.
 const EXPECTED_CHAPTERS = [
   'hero',
   'access-thesis',
