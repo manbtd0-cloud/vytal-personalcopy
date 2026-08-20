@@ -1,0 +1,35 @@
+import { render } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
+import LandingPage from '../../src/public/pages/LandingPage.jsx'
+
+const EXPECTED_CHAPTERS = [
+  'hero',
+  'access-thesis',
+  'proof-field',
+  'science-lineage',
+  'context-stories',
+  'signal-journey',
+  'signal-marquee',
+  'documentary-run',
+  'trust-reset',
+  'evidence-voices',
+  'language-band',
+  'platform-arc',
+  'concrete-value',
+  'final-entry',
+]
+
+test('Home contains only the approved 14 reference-driven chapters', () => {
+  const { container } = render(
+    <MemoryRouter>
+      <LandingPage />
+    </MemoryRouter>,
+  )
+
+  const home = container.querySelector('.reference-home')
+  expect(home).not.toBeNull()
+
+  const directChildren = [...home.children]
+  expect(directChildren).toHaveLength(EXPECTED_CHAPTERS.length)
+  expect(directChildren.map((node) => node.getAttribute('data-home-chapter'))).toEqual(EXPECTED_CHAPTERS)
+})
